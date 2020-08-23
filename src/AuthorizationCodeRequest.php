@@ -2,14 +2,15 @@
 
 namespace Francerz\OAuth2;
 
+use Francerz\Http\Helpers\UriHelper;
 use Psr\Http\Message\UriInterface;
 
 class AuthorizationCodeRequest
 {
-    private AuthClient $authClient;
-    private array $scopes = array();
-    private UriInterface $redirectUri;
-    private string $state;
+    private $authClient; // AuthClient
+    private $scopes = array(); // array
+    private $redirectUri; // UriInterface
+    private $state; // string
 
     public function getAuthClient() : AuthClient
     {
@@ -73,7 +74,7 @@ class AuthorizationCodeRequest
         }
 
         $uri = $this->authClient->getAuthorizationEndpoint();
-        $uri = $uri->withQueryParams($params);
+        $uri = UriHelper::withQueryParams($uri, $params);
 
         return $uri;
     }

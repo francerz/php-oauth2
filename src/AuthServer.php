@@ -21,11 +21,11 @@ class AuthServer
     private $getResourceOwnerHandler;
     private $getAuthorizationCodeHandler;
 
-    private ClientInterface $client;
-    private ResourceOwnerInterface $resourceOwner;
-    private array $scopes;
+    private $client;
+    private $resourceOwner;
+    private $scopes;
 
-    private string $authorizationCode;
+    private $authorizationCode;
 
     #region set handlers methods
     /**
@@ -170,7 +170,7 @@ class AuthServer
         $redirect_uri = $redirect_uri->withQueryParam('code', $this->authorizationCode);
 
         $response = new Response();
-        $response = $response->withStatusCode(StatusCodes::REDIRECT);
+        $response = $response->withStatus(StatusCodes::TEMPORARY_REDIRECT);
         $response = $response->withHeader('Location', $redirect_uri);
 
         return $response;

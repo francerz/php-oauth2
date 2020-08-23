@@ -6,9 +6,9 @@ use Psr\Http\Message\UriInterface;
 
 class AuthClient
 {
-    private string $clientId;
-    private string $clientSecret;
-    private UriInterface $authorizationEndpoint;
+    private $clientId; // string
+    private $clientSecret; // string
+    private $authorizationEndpoint; // UriInterface
 
     public function setClientId(string $clientId)
     {

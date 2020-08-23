@@ -5,14 +5,14 @@ namespace Francerz\OAuth2;
 class AccessToken implements \JsonSerializable
 {
 
-    public string $accessToken;
-    public string $tokenType;
-    public int $expiresIn;
-    public ?string $refreshToken;
+    public $accessToken;
+    public $tokenType;
+    public $expiresIn;
+    public  $refreshToken;
 
-    private array $parameters = array();
+    private $parameters = array();
 
-    private int $createTime;
+    private $createTime;
 
     public function __construct(
         string $accessToken,
@@ -27,7 +27,7 @@ class AccessToken implements \JsonSerializable
         $this->refreshToken = $refreshToken;
         $this->createTime = is_null($createTime) ? time() : $createTime;
     }
-
+    
     public function jsonSerialize()
     {
         $json = array(
@@ -84,6 +84,21 @@ class AccessToken implements \JsonSerializable
     public function setRefreshToken(string $refreshToken)
     {
         $this->refreshToken = $refreshToken;
+    }
+    public function getParameter(string $name)
+    {
+        if (array_key_exists($name, $this->parameters)) {
+            return $this->parameters[$name];
+        }
+        return null;
+    }
+    public function setParameter(string $name, $value)
+    {
+        $this->parameters[$name] = $value;
+    }
+    public function getCreateTime() : int
+    {
+        return $this->createTime;
     }
     #endregion
 }
