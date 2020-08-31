@@ -1,0 +1,27 @@
+<?php
+
+use Francerz\Http\Uri;
+use Francerz\OAuth2\AuthClient;
+use Francerz\OAuth2\AuthorizationCodeRequest;
+use PHPUnit\Framework\TestCase;
+
+class AuthorizationCodeRequestTest extends TestCase
+{
+    public function testGetRequestUri()
+    {
+        $authClient = new AuthClient(
+            'abcdefg',// client_id
+            'qwertyuiop', // client_secret
+            new Uri('https://example.com/oauth2/token'),
+            new Uri('https://example.com/oauth2/auth')
+        );
+
+        $authReq = new AuthorizationCodeRequest($authClient);
+        $uri = $authReq->getRequestUri();
+
+        $this->assertEquals(
+            'https://example.com/oauth2/auth?response_type=code&client_id=abcdefg',
+            (string)$uri
+        );
+    }
+}

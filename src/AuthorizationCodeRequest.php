@@ -12,14 +12,22 @@ class AuthorizationCodeRequest
     private $redirectUri; // UriInterface
     private $state; // string
 
+    public function __construct(
+        AuthClient $authClient = null
+    ) {
+        $this->authClient = $authClient;
+    }
+
     public function getAuthClient() : AuthClient
     {
         return $this->authClient;
     }
 
-    public function setAuthClient(AuthClient $authClient)
+    public function withAuthClient(AuthClient $authClient) : AuthorizationCodeRequest
     {
-        $this->authClient = $authClient;
+        $new = clone $this;
+        $new->authClient = $authClient;
+        return $new;
     }
 
     public function getScopes() : array
@@ -27,29 +35,35 @@ class AuthorizationCodeRequest
         return $this->scopes;
     }
 
-    public function addScope($scope_or_scopes)
+    public function withAddedScope($scope_or_scopes) : AuthorizationCodeRequest
     {
+        $new = clone $this;
         if (is_array($scope_or_scopes)) {
             foreach ($scope_or_scopes as $s) {
-                $this->addScope($s);
+                $new->scopes[] = $s;
             }
-            return;
+            return $new;
         }
-        $this->scopes[] = $scope_or_scopes;
+        $new->scopes[] = $scope_or_scopes;
+        return $new;
     }
 
-    public function setRedirectUri(UriInterface $redirectUri)
+    public function withRedirectUri(UriInterface $redirectUri) : AuthorizationCodeRequest
     {
-        $this->redirectUri = $redirectUri;
+        $new = clone $this;
+        $new->redirectUri = $redirectUri;
+        return $new;
     }
     public function getRedirectUri() : UriInterface
     {
         return $this->redirectUri;
     }
 
-    public function setState(string $state)
+    public function withState(string $state)
     {
-        $this->state = $state;
+        $new = clone $this;
+        $new->state = $state;
+        return $new;
     }
     public function getState() : string
     {
@@ -58,6 +72,9 @@ class AuthorizationCodeRequest
 
     public function getRequestUri() : UriInterface
     {
+        if (!isset($this->authClient)) {
+            throw new \Exception("AuthClient not sets");
+        }
         $params = [
             'response_type' => 'code',
             'client_id' => $this->authClient->getClientId()

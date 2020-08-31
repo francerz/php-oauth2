@@ -1,5 +1,6 @@
 <?php
 
+use Francerz\Http\Response;
 use Francerz\OAuth2\AuthClient;
 use Francerz\OAuth2\AuthorizationCodeRequest;
 use Francerz\OAuth2\AuthServer;
@@ -25,6 +26,10 @@ class Client implements ClientInterface
     {
         return $this->client_secret;
     }
+    public function isConfidential(): bool
+    {
+        return true;
+    }
 }
 class ResourceOwner implements ResourceOwnerInterface
 {
@@ -34,18 +39,34 @@ class ResourceOwner implements ResourceOwnerInterface
 
 // Client side request initiation
 
-$authClient = new AuthClient();
-$authClient->setClientId('my_client_id');
-$authClient->setClientSecret('AbCdEfGhIjKlMnOpQrStUvWxYz');
-$authClient->setAuthorizationEndpoint(new Uri('https://www.example.com/oauth2/auth'));
+$authClient = new AuthClient(
+    'my_client_id',
+    'AbCdEfGhIjKlMnOpQrStUvWxYz',
+    new Uri('https://www.example.com/oauth2/token'),
+    new Uri('https://www.example.com/oauth2/auth')
+);
+$authClient->setCheckStateHandler(function(string $state) : bool {
+    return true;
+});
 
-$authReq = new AuthorizationCodeRequest();
-$authReq->setAuthClient($authClient);
-$authReq->setRedirectUri(new Uri('http://www.my-app.com/oauth2/callback'));
-$authReq->setState('abc123');
+$authReq = new AuthorizationCodeRequest($authClient);
+$authReq = $authReq
+    ->withRedirectUri(new Uri('http://www.my-app.com/oauth2/callback'))
+    ->withState('abc123');
 
 $uri = $authReq->getRequestUri();
 
+/**
+ * GET /oauth2/auth
+ *     ?response_type=code
+ *     &client_id=my_client_id
+ *     &redirect_uri=http%3A%2F%2Fwww.my-app.com%2Foauth2%2Fcallback
+ *     &state=abc123
+ *     HTTP/1.1
+ * Host: www.example.com
+ */
+
+// ////////////////////////////////////
 // Server side request reception
 
 $authServer = new AuthServer();
@@ -60,3 +81,18 @@ $authServer->setGetAuthorizationCodeHandler(function(Client $client, ResourceOwn
 });
 
 $response = $authServer->handleAuthRequest(new ServerRequest());
+// Sends response to client.
+/**
+ * HTTP/1.1 302 FOUND
+ * Location: http://www.my-app.com/oauth2/callback
+ *     ?state=abc123
+ *     &code=AuthCode_0123456789
+ */
+
+// ////////////////////////////////////
+// Client side Response handling
+try {
+    $authClient->handleAuthCode(new ServerRequest());
+} catch (Exception $ex) {
+    throw $ex;
+}

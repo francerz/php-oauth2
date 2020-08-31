@@ -12,12 +12,12 @@
             "source": {
                 "type": "git",
                 "url": "git@github.com:francerz/php-http.git",
-                "reference": "084636a352798aa7ab2901224c73279223e840d7"
+                "reference": "6b3197be97df24cce9b7b23119bf9302327ed847"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/francerz/php-http/zipball/084636a352798aa7ab2901224c73279223e840d7",
-                "reference": "084636a352798aa7ab2901224c73279223e840d7",
+                "url": "https://api.github.com/repos/francerz/php-http/zipball/6b3197be97df24cce9b7b23119bf9302327ed847",
+                "reference": "6b3197be97df24cce9b7b23119bf9302327ed847",
                 "shasum": ""
             },
             "require": {
@@ -38,7 +38,7 @@
                 "source": "https://github.com/francerz/php-http/tree/master",
                 "issues": "https://github.com/francerz/php-http/issues"
             },
-            "time": "2020-08-23T18:36:54+00:00"
+            "time": "2020-08-24T20:14:01+00:00"
         },
         {
             "name": "francerz/power-data",
