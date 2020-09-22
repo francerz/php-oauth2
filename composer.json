@@ -1,5 +1,5 @@
 {
-    "name": "francerz/oauth2",
+    "name": "francerz/php-oauth2",
     "description": "PHP OAuth2 support library",
     "repositories": [
         {
