@@ -224,7 +224,7 @@ class AuthServer
         }
         $code = $params['code'];
         if (!array_key_exists('client_id', $params)) {
-            throw new \Exception('Missing client_id_ parameter.');
+            throw new \Exception('Missing client_id parameter.');
         }
         $client_id = $params['client_id'];
 
