@@ -18,8 +18,8 @@
     },
     "require": {
         "psr/http-message": "^1.0",
-        "francerz/http": "dev-master",
-        "francerz/power-data": "dev-master"
+        "francerz/php-http": "dev-master",
+        "francerz/php-power-data": "dev-master"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.2"
