@@ -99,7 +99,7 @@ class AuthServer
     }
     #endregion
 
-    public function handleAuthRequest(RequestInterface $request)
+    public function handleAuthRequest(RequestInterface $request) : ResponseInterface
     {
         $request_type = UriHelper::getQueryParam($request->getUri(), 'request_type');
 
@@ -169,7 +169,7 @@ class AuthServer
         return $response;
     }
 
-    public function handleTokenRequest(RequestInterface $request)
+    public function handleTokenRequest(RequestInterface $request) : ResponseInterface
     {
         $params = BodyHelper::getParsedBody($request);
 
