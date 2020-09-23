@@ -15,12 +15,11 @@ use Francerz\OAuth2\Exceptions\AuthServerException;
 use Francerz\OAuth2\Exceptions\InvalidRequestException;
 use Francerz\OAuth2\Exceptions\UnavailableResourceOwnerException;
 use Francerz\OAuth2\GrantTypes;
-use Francerz\OAuth2\Roles\AuthCodeInterface;
-use Francerz\OAuth2\Roles\ClientInterface;
-use Francerz\OAuth2\Roles\ResourceOwnerInterface;
+use Francerz\OAuth2\AuthCodeInterface;
+use Francerz\OAuth2\ClientInterface;
+use Francerz\OAuth2\ResourceOwnerInterface;
 use Francerz\PowerData\Functions;
 use InvalidArgumentException;
-use ReflectionFunction;
 
 class AuthServer
 {
