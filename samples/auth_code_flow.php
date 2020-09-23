@@ -1,41 +1,16 @@
 <?php
 
 use Francerz\Http\Response;
-use Francerz\OAuth2\AuthClient;
-use Francerz\OAuth2\AuthorizationCodeRequest;
-use Francerz\OAuth2\AuthServer;
+use Francerz\OAuth2\Roles\AuthClient;
+use Francerz\OAuth2\Flow\AuthorizationCodeRequest;
+use Francerz\OAuth2\Roles\AuthServer;
 use Francerz\Http\Uri;
 use Francerz\Http\ServerRequest;
-use Francerz\OAuth2\Roles\ClientInterface;
-use Francerz\OAuth2\Roles\ResourceOwnerInterface;
-
-#region Extra definitions
-class Client implements ClientInterface
-{
-    private string $client_id;
-
-    public function __construct(string $client_id)
-    {
-        $this->client_id = $client_id;
-    }
-    public function getClientId() : string
-    {
-        return $this->client_id;
-    }
-    public function getClientSecret() : string
-    {
-        return $this->client_secret;
-    }
-    public function isConfidential(): bool
-    {
-        return true;
-    }
-}
-class ResourceOwner implements ResourceOwnerInterface
-{
-
-}
-#endregion
+use Francerz\OAuth2\Client;
+use Francerz\OAuth2\ResourceOwner;
+use Francerz\OAuth2\ClientInterface;
+use Francerz\OAuth2\ResourceOwnerInterface;
+use Francerz\OAuth2\Roles\AuthCodeInterface;
 
 // Client side request initiation
 
@@ -54,7 +29,7 @@ $authReq = $authReq
     ->withRedirectUri(new Uri('http://www.my-app.com/oauth2/callback'))
     ->withState('abc123');
 
-$uri = $authReq->getRequestUri();
+$request = $authReq->getRequest();
 
 /**
  * GET /oauth2/auth
@@ -73,10 +48,10 @@ $authServer = new AuthServer();
 $authServer->setFindClientHandler(function($client_id) : ClientInterface {
     return new Client($client_id);
 });
-$authServer->setGetResourceOwnerHandler(function() {
-    return new ResourceOwner();
+$authServer->setGetResourceOwnerHandler(function() : ResourceOwnerInterface {
+    return new ResourceOwner('12345');
 });
-$authServer->setGetAuthorizationCodeHandler(function(Client $client, ResourceOwner $ro, array $scopes) : string {
+$authServer->setCreateAuthorizationCodeHandler(function(Client $client, ResourceOwner $ro, array $scopes) : AuthCodeInterface {
     return 'AuthCode_0123456789';
 });
 

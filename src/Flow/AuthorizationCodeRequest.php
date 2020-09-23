@@ -1,8 +1,11 @@
 <?php
 
-namespace Francerz\OAuth2;
+namespace Francerz\OAuth2\Flow;
 
 use Francerz\Http\Helpers\UriHelper;
+use Francerz\Http\Request;
+use Francerz\OAuth2\Roles\AuthClient;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
 
 class AuthorizationCodeRequest
@@ -70,7 +73,7 @@ class AuthorizationCodeRequest
         return $this->state;
     }
 
-    public function getRequestUri() : UriInterface
+    public function getRequest() : RequestInterface
     {
         if (!isset($this->authClient)) {
             throw new \Exception("AuthClient not sets");
@@ -93,6 +96,8 @@ class AuthorizationCodeRequest
         $uri = $this->authClient->getAuthorizationEndpoint();
         $uri = UriHelper::withQueryParams($uri, $params);
 
-        return $uri;
+        $request = new Request($uri);
+
+        return $request;
     }
 }

@@ -1,10 +1,11 @@
 <?php
 
-namespace Francerz\OAuth2;
+namespace Francerz\OAuth2\Roles;
 
 use Francerz\Http\Client as HttpClient;
+use Francerz\OAuth2\Flow\RedeemCodeRequest;
+use Francerz\PowerData\Functions;
 use InvalidArgumentException;
-use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UriInterface;
 use ReflectionFunction;
@@ -80,16 +81,8 @@ class AuthClient
 
     public function setCheckStateHandler(callable $handler)
     {
-        $rf = new ReflectionFunction($handler);
-
-        $retType = $rf->getReturnType();
-        if ($retType->getName() !== 'bool') {
-            throw new InvalidArgumentException('Function return type must be \'bool\'.');
-        }
-
-        $args = $rf->getParameters();
-        if (count($args) < 1 || $args[0]->getType()->getName() !== 'string') {
-            throw new InvalidArgumentException('Function must contain one parameter type \'string\' for $state.');
+        if (!Functions::testSignature($handler, ['string'], 'bool')) {
+            throw new InvalidArgumentException('Funtion expected signature is: (string $state) : bool');
         }
 
         $this->checkStateHandler = $handler;

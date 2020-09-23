@@ -1,6 +1,6 @@
 <?php
 
-namespace Francerz\OAuth2\Roles;
+namespace Francerz\OAuth2;
 
 interface ClientInterface
 {

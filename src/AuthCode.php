@@ -14,7 +14,25 @@ class AuthCode implements AuthCodeInterface
     private $createTime;
     private $redeemTime;
 
-    public function withClientId(string $client_id): AuthCodeInterface
+    public function __construct(
+        string $clientId,
+        string $ownerId,
+        string $code,
+        string $scope,
+        int $lifetime = 600,
+        int $createTime = null,
+        int $redeemTime = null
+    ) {
+        $this->clientId = $clientId;
+        $this->ownerId = $ownerId;
+        $this->code = $code;
+        $this->scope = $scope;
+        $this->lifetime = $lifetime;
+        $this->createTime = $createTime;
+        $this->redeemTime = $redeemTime;
+    }
+
+    public function withClientId(string $client_id): AuthCode
     {
         $new = clone $this;
         $new->clientId = $client_id;
@@ -26,7 +44,7 @@ class AuthCode implements AuthCodeInterface
         return $this->clientId;
     }
 
-    public function withOwnerId(string $owner_id): AuthCodeInterface
+    public function withOwnerId(string $owner_id): AuthCode
     {
         $new = clone $this;
         $new->ownerId = $owner_id;
@@ -38,7 +56,7 @@ class AuthCode implements AuthCodeInterface
         return $this->ownerId;
     }
 
-    public function withCode(string $code): AuthCodeInterface
+    public function withCode(string $code): AuthCode
     {
         $new = clone $this;
         $new->code = $code;
@@ -50,7 +68,7 @@ class AuthCode implements AuthCodeInterface
         return $this->code;
     }
 
-    public function withScope(string $scope): AuthCodeInterface
+    public function withScope(string $scope): AuthCode
     {
         $new = clone $this;
         $new->scope = $scope;
@@ -62,7 +80,7 @@ class AuthCode implements AuthCodeInterface
         return $this->scope;
     }
 
-    public function withLifetime(int $lifetime): AuthCodeInterface
+    public function withLifetime(int $lifetime): AuthCode
     {
         $new = clone $this;
         $new->lifetime = $lifetime;
@@ -74,7 +92,7 @@ class AuthCode implements AuthCodeInterface
         return $this->lifetime;
     }
 
-    public function withRedeemTime(int $epoch): AuthCodeInterface
+    public function withRedeemTime(int $epoch): AuthCode
     {
         $new = clone $this;
         $new->redeemTime = $epoch;
@@ -103,7 +121,7 @@ class AuthCode implements AuthCodeInterface
 
     public function isExpired(int $s = 5): bool
     {
-        return $this->getExpireTime() > time() - $s;
+        return $this->isExpiredAt(time() - $s);
     }
 
     public function save()

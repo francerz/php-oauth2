@@ -1,11 +1,13 @@
 <?php
 
-namespace Francerz\OAuth2;
+namespace Francerz\OAuth2\Flow;
 
 use Francerz\Http\MediaTypes;
 use Francerz\Http\Methods;
 use Francerz\Http\Request;
 use Francerz\Http\UrlEncodedParams;
+use Francerz\OAuth2\GrantTypes;
+use Francerz\OAuth2\Roles\AuthClient;
 use Psr\Http\Message\RequestInterface;
 
 class RedeemCodeRequest

@@ -1,8 +1,8 @@
 <?php
 
 use Francerz\Http\Uri;
-use Francerz\OAuth2\AuthClient;
-use Francerz\OAuth2\AuthorizationCodeRequest;
+use Francerz\OAuth2\Roles\AuthClient;
+use Francerz\OAuth2\Flow\AuthorizationCodeRequest;
 use PHPUnit\Framework\TestCase;
 
 class AuthorizationCodeRequestTest extends TestCase
@@ -17,11 +17,11 @@ class AuthorizationCodeRequestTest extends TestCase
         );
 
         $authReq = new AuthorizationCodeRequest($authClient);
-        $uri = $authReq->getRequestUri();
+        $req = $authReq->getRequest();
 
         $this->assertEquals(
             'https://example.com/oauth2/auth?response_type=code&client_id=abcdefg',
-            (string)$uri
+            (string)$req->getUri()
         );
     }
 }

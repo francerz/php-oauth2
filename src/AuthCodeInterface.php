@@ -1,6 +1,6 @@
 <?php
 
-namespace Francerz\OAuth2\Roles;
+namespace Francerz\OAuth2;
 
 interface AuthCodeInterface
 {
@@ -26,6 +26,4 @@ interface AuthCodeInterface
     public function isUsed() : bool;
     public function isExpiredAt(int $epoch) : bool;
     public function isExpired(int $s = 5) : bool;
-
-    public function save();
 }
