@@ -101,12 +101,25 @@ class AuthServer
 
     public function handleAuthRequest(RequestInterface $request) : ResponseInterface
     {
-        $request_type = UriHelper::getQueryParam($request->getUri(), 'request_type');
+        $response_type = UriHelper::getQueryParam($request->getUri(), 'response_type');
 
-        switch($request_type) {
+        switch($response_type) {
             case 'code':
                 return $this->handleAuthRequestCode($request);
-                break;
+            default:
+                $redirect_uri_str = UriHelper::getQueryParam($request->getUri(), 'redirect_uri');
+                $redirect_uri = new Uri($redirect_uri_str);
+
+                $state = UriHelper::getQueryParam($request->getUri(), 'state');
+                $redirect_uri = $redirect_uri->withQueryParams(array(
+                    'state' => $state,
+                    'error' => 'unsupported_response_type'
+                ));
+
+                $response = new Response();
+                $response = $response->withStatus(StatusCodes::FOUND);
+                $response = $response->withHeader('Location', $redirect_uri);
+                return $response;
         }
     }
     private function handleAuthRequestCode(RequestInterface $request) : ResponseInterface
@@ -142,13 +155,13 @@ class AuthServer
             throw new UnavailableResourceOwnerException('Resource owner not found.');
         }
         
-        $redirect_uri_str = UriHelper::getQueryParam($request->getUri(), 'redirect_uri');;
+        $redirect_uri_str = UriHelper::getQueryParam($request->getUri(), 'redirect_uri');
         $redirect_uri = new Uri($redirect_uri_str);
 
-        $state = UriHelper::getQueryParam($request->getUri(), 'state');;
+        $state = UriHelper::getQueryParam($request->getUri(), 'state');
         $redirect_uri = $redirect_uri->withQueryParam('state', $state);
 
-        $scope_str = UriHelper::getQueryParam($request->getUri(), 'scope');;
+        $scope_str = UriHelper::getQueryParam($request->getUri(), 'scope');
         $this->scopes = explode(' ', $scope_str);
 
         $cach = $this->createAuthorizationCodeHandler;
