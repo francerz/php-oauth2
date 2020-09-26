@@ -73,7 +73,7 @@ class AuthorizationCodeRequest
         return $this->state;
     }
 
-    public function getRequest() : RequestInterface
+    public function getRequestUri() : UriInterface
     {
         if (!isset($this->authClient)) {
             throw new \Exception("AuthClient not sets");
@@ -95,9 +95,7 @@ class AuthorizationCodeRequest
 
         $uri = $this->authClient->getAuthorizationEndpoint();
         $uri = UriHelper::withQueryParams($uri, $params);
-
-        $request = new Request($uri);
-
-        return $request;
+        
+        return $uri;
     }
 }
