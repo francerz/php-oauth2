@@ -84,7 +84,7 @@ class AuthorizationCodeRequest
         ];
 
         if (isset($this->redirectUri)) {
-            $params['redirect_uri'] = $this->redirectUri;
+            $params['redirect_uri'] = (string)$this->redirectUri;
         }
         if (!empty($this->scope)) {
             $params['scope'] = join(' ', $this->scopes);
