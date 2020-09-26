@@ -154,12 +154,6 @@ class AuthServer
         if (!isset($this->resourceOwner)) {
             throw new UnavailableResourceOwnerException('Resource owner not found.');
         }
-        
-        $redirect_uri_str = UriHelper::getQueryParam($request->getUri(), 'redirect_uri');
-        $redirect_uri = new Uri($redirect_uri_str);
-
-        $state = UriHelper::getQueryParam($request->getUri(), 'state');
-        $redirect_uri = $redirect_uri->withQueryParam('state', $state);
 
         $scope_str = UriHelper::getQueryParam($request->getUri(), 'scope');
         $this->scopes = explode(' ', $scope_str);
@@ -173,7 +167,15 @@ class AuthServer
         }
 
         $this->authorizationCode = $cach($this->client, $this->resourceOwner, $this->scopes);
-        $redirect_uri = $redirect_uri->withQueryParam('code', $this->authorizationCode);
+        
+        $redirect_uri_str = UriHelper::getQueryParam($request->getUri(), 'redirect_uri');
+        $redirect_uri = new Uri($redirect_uri_str);
+        $state = UriHelper::getQueryParam($request->getUri(), 'state');
+
+        $redirect_uri = $redirect_uri->withQueryParams(array(
+            'state' => $state,
+            'code' => $this->authorizationCode
+        ));
 
         $response = new Response();
         $response = $response->withStatus(StatusCodes::FOUND);
