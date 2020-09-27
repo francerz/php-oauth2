@@ -21,6 +21,18 @@ class RedeemCodeRequest
         $this->code = $code;
     }
 
+    public function withAuthClient(AuthClient $authClient)
+    {
+        $new = clone $this;
+        $new->authClient = $authClient;
+        return $new;
+    }
+
+    public function getAuthClient() : AuthClient
+    {
+        return $this->authClient;
+    }
+
     public function withCode(string $code)
     {
         $new = clone $this;
@@ -52,7 +64,7 @@ class RedeemCodeRequest
             'client_id' => $this->authClient->getClientId()
         ));
 
-        if (false) {
+        if (true) {
             $request = $request->withAuthorizationHeader(
                 'Basic',
                 $this->authClient->getClientId() . ':' .
