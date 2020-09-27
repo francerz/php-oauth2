@@ -3,12 +3,12 @@
 namespace Francerz\OAuth2\Roles;
 
 use Francerz\Http\Client as HttpClient;
+use Francerz\Http\Helpers\UriHelper;
 use Francerz\OAuth2\Flow\RedeemCodeRequest;
 use Francerz\PowerData\Functions;
 use InvalidArgumentException;
-use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
-use ReflectionFunction;
 
 class AuthClient
 {
@@ -88,9 +88,9 @@ class AuthClient
         $this->checkStateHandler = $handler;
     }
 
-    public function handleAuthCode(ServerRequestInterface $request)
+    public function handleAuthCodeRequest(RequestInterface $request)
     {
-        $params = $request->getQueryParams();
+        $params = UriHelper::getQueryParams($request->getUri());
 
         if (array_key_exists('error', $params)) {
             throw new \Exception("{$params['error']}:{$params['error_description']}");
