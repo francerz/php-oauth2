@@ -262,7 +262,7 @@ class AuthServer
         }
 
         $froh = $this->findResourceOwnerHandler;
-        if (is_callable($froh)) {
+        if (!is_callable($froh)) {
             throw new \Exception('Callable findResourceOwnerHandler not found.');
         }
 
