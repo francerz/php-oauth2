@@ -2,9 +2,11 @@
 
 namespace Francerz\OAuth2\Roles;
 
+use Francerz\Http\BodyParsers;
 use Francerz\Http\Helpers\BodyHelper;
 use Francerz\Http\Helpers\MessageHelper;
 use Francerz\Http\Helpers\UriHelper;
+use Francerz\Http\Parsers\UrlEncodedParser;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Francerz\Http\Uri;
@@ -216,6 +218,7 @@ class AuthServer
 
     public function handleTokenRequest(RequestInterface $request) : ResponseInterface
     {
+        BodyParsers::register(new UrlEncodedParser());
         $params = BodyHelper::getParsedBody($request);
 
         if (empty($params)) {
