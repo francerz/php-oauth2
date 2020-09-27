@@ -118,7 +118,7 @@ class AuthCode implements AuthCodeInterface
 
     public function isExpiredAt(int $epoch): bool
     {
-        return $this->getExpireTime() > $epoch;
+        return $this->getExpireTime() < $epoch;
     }
 
     public function isExpired(int $s = 5): bool
