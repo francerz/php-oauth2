@@ -2,7 +2,7 @@
 
 namespace Francerz\OAuth2;
 
-use Francerz\OAuth2\Roles\AuthCodeInterface;
+use Francerz\OAuth2\AuthCodeInterface;
 
 class AuthCode implements AuthCodeInterface
 {
@@ -13,6 +13,8 @@ class AuthCode implements AuthCodeInterface
     private $lifetime;
     private $createTime;
     private $redeemTime;
+
+    private $params = array();
 
     public function __construct(
         string $clientId,
@@ -124,8 +126,16 @@ class AuthCode implements AuthCodeInterface
         return $this->isExpiredAt(time() - $s);
     }
 
-    public function save()
+    public function withParam(string $name, $value) : AuthCode
     {
-
+        $new = clone $this;
+        $new->params[$name] = $value;
+        return $new;
+    }
+    public function getParam(string $name)
+    {
+        if (array_key_exists($name, $this->params)) {
+            return $this->params[$name];
+        }
     }
 }

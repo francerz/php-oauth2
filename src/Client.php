@@ -9,6 +9,8 @@ class Client implements ClientInterface
     private $client_id;
     private $client_secret;
     private $confidential;
+
+    private $params = array();
     
     public function __construct(string $client_id, string $client_secret = null, bool $confidential = false)
     {
@@ -28,5 +30,19 @@ class Client implements ClientInterface
     public function isConfidential(): bool
     {
         return $this->confidential;
+    }
+
+    public function withParam(string $name, $value) : Client
+    {
+        $new = clone $this;
+        $new->params[$name] = $value;
+        return $new;
+    }
+
+    public function getParam(string $name)
+    {
+        if (array_key_exists($name, $this->params)) {
+            return $this->params[$name];
+        }
     }
 }

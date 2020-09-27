@@ -26,4 +26,7 @@ interface AuthCodeInterface
     public function isUsed() : bool;
     public function isExpiredAt(int $epoch) : bool;
     public function isExpired(int $s = 5) : bool;
+
+    public function withParam(string $name, $value) : AuthCodeInterface;
+    public function getParam(string $name);
 }
