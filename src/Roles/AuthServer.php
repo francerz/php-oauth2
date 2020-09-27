@@ -325,7 +325,9 @@ class AuthServer
         $authCode = $authCode->withRedeemTime(time());
         $uacrth($authCode);
 
-        $accessToken = $cath($this->client, $resourceOwner, $authCode->getScope());
+        $scopes = explode(' ', $authCode->getScope());
+
+        $accessToken = $cath($this->client, $resourceOwner, $scopes);
 
         BodyParsers::register(new JsonParser());
         $response = new Response();
