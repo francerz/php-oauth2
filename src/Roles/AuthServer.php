@@ -331,10 +331,11 @@ class AuthServer
 
         BodyParsers::register(new JsonParser());
         $response = new Response();
-        $response = MessageHelper
-            ::withContent($response, MediaTypes::APPLICATION_JSON, $accessToken)
+        $response = $response
+            ->withStatus(StatusCodes::OK)
             ->withHeader('Cache-Control', 'no-store')
             ->withHeader('Pragma', 'no-cache');
+        $response = MessageHelper::withContent($response, MediaTypes::APPLICATION_JSON, $accessToken);
 
         return $response;
     }
