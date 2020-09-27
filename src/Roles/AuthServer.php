@@ -3,9 +3,10 @@
 namespace Francerz\OAuth2\Roles;
 
 use Francerz\Http\BodyParsers;
-use Francerz\Http\Helpers\BodyHelper;
 use Francerz\Http\Helpers\MessageHelper;
 use Francerz\Http\Helpers\UriHelper;
+use Francerz\Http\MediaTypes;
+use Francerz\Http\Parsers\JsonParser;
 use Francerz\Http\Parsers\UrlEncodedParser;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -231,7 +232,7 @@ class AuthServer
     public function handleTokenRequest(RequestInterface $request) : ResponseInterface
     {
         BodyParsers::register(new UrlEncodedParser());
-        $params = BodyHelper::getParsedBody($request);
+        $params = MessageHelper::getContent($request);
 
         if (empty($params)) {
             throw new \Exception('No parameters received');
@@ -277,7 +278,7 @@ class AuthServer
         }
         #endregion
 
-        $params = BodyHelper::getParsedBody($request);
+        $params = MessageHelper::getContent($request);
         if (!array_key_exists('code', $params)) {
             throw new \Exception('Missing code parameter.');
         }
@@ -326,7 +327,13 @@ class AuthServer
 
         $accessToken = $cath($this->client, $resourceOwner, $authCode->getScope());
 
+        BodyParsers::register(new JsonParser());
         $response = new Response();
+        $response = MessageHelper
+            ::withContent($response, MediaTypes::APPLICATION_JSON, $accessToken)
+            ->withHeader('Cache-Control', 'no-store')
+            ->withHeader('Pragma', 'no-cache');
+
         return $response;
     }
 }
