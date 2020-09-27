@@ -87,7 +87,6 @@ class AuthServer
      * Undocumented function
      *
      * @param callable $handler (string $code) : AuthCodeInterface
-     * @return AuthCodeInterface
      */
     public function setFindAuthorizationCodeHandler(callable $handler)
     {
@@ -96,6 +95,37 @@ class AuthServer
         }
 
         $this->findAuthorizationCodeHandler = $handler;
+    }
+
+    /**
+     * @param callable $handler (AuthCodeInterface $authCode) : void
+     */
+    public function setUpdateAuthorizationCodeRedeemTimeHandler(callable $handler)
+    {
+        if (!Functions::testSignature($handler, [AuthCodeInterface::class])) {
+            throw new InvalidArgumentException('Function expected signature is: (AuthCodeInterface $authCode) : void');
+        }
+
+        $this->updateAuthorizationCodeRedeemTimeHandler = $handler;
+    }
+
+    /**
+     * Undocumented function
+     *
+     * @param callable $handler (ClientInterface $client, ResourceOwnerInterface $owner, array $scopes)
+     * @return void
+     */
+    public function setCreateAccessTokenHandler(callable $handler)
+    {
+        if (!Functions::testSignature(
+            $handler,
+            [ClientInterface::class, ResourceOwnerInterface::class, 'array'],
+            AccessToken::class)
+        ) {
+            throw new InvalidArgumentException('Function expected signature is: (ClientInterface $client, ResourceOwnerInterface $owner, array $scopes)');
+        }
+
+        $this->createAccessTokenHandler = $handler;
     }
     #endregion
 
