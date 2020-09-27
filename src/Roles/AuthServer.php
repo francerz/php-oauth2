@@ -25,10 +25,13 @@ use InvalidArgumentException;
 
 class AuthServer
 {
-    private $findClientHandler;
-    private $getResourceOwnerHandler;
     private $createAuthorizationCodeHandler;
+    private $createAccessTokenHandler;
     private $findAuthorizationCodeHandler;
+    private $findClientHandler;
+    private $findResourceOwnerHandler;
+    private $getResourceOwnerHandler;
+    private $updateAuthorizationCodeRedeemTimeHandler;
 
     private $client;
     private $resourceOwner;
@@ -124,10 +127,19 @@ class AuthServer
             [ClientInterface::class, ResourceOwnerInterface::class, 'array'],
             AccessToken::class)
         ) {
-            throw new InvalidArgumentException('Function expected signature is: (ClientInterface $client, ResourceOwnerInterface $owner, array $scopes)');
+            throw new InvalidArgumentException('Function expected signature is: (ClientInterface $client, ResourceOwnerInterface $owner, array $scopes) : AccessToken');
         }
 
         $this->createAccessTokenHandler = $handler;
+    }
+
+    public function setFindResourceOwnerHandler(callable $handler)
+    {
+        if (!Functions::testSignature($handler, ['string'], ResourceOwnerInterface::class)) {
+            throw new InvalidArgumentException('Function expected signature is: (string $ownerUniqueId) : ResourceOwnerInterface');
+        }
+
+        $this->findResourceOwnerHandler = $handler;
     }
     #endregion
 
@@ -238,6 +250,33 @@ class AuthServer
 
     private function handleTokenRequestCode(RequestInterface $request) : ResponseInterface
     {
+        #region Callable checks
+        $fch = $this->findClientHandler;
+        if (!is_callable($fch)) {
+            throw new AuthServerException('Callable findClientHandler not found.');
+        }
+
+        $fach = $this->findAuthorizationCodeHandler;
+        if (!is_callable($fach)) {
+            throw new \Exception('Callable findAuthorizationCodeHandler not found.');
+        }
+
+        $froh = $this->findResourceOwnerHandler;
+        if (is_callable($froh)) {
+            throw new \Exception('Callable findResourceOwnerHandler not found.');
+        }
+
+        $uacrth = $this->updateAuthorizationCodeRedeemTimeHandler;
+        if (!is_callable($uacrth)) {
+            throw new \Exception('Callable updateAuthorizationCodeRedeemTimeHandler not found.');
+        }
+        
+        $cath = $this->createAccessTokenHandler;
+        if (!is_callable($cath)) {
+            throw new \Exception('Callable createAccessTokenHandler not found.');
+        }
+        #endregion
+
         $params = BodyHelper::getParsedBody($request);
         if (!array_key_exists('code', $params)) {
             throw new \Exception('Missing code parameter.');
@@ -247,14 +286,6 @@ class AuthServer
             throw new \Exception('Missing client_id parameter.');
         }
         $client_id = $params['client_id'];
-
-        $fch = $this->findClientHandler;
-        if (!is_callable($fch)) {
-            throw new AuthServerException(
-                'Callable findClientHandler not found.'.PHP_EOL.
-                'Use '.static::class.'::setFindClientHandler() to initialize.'
-            );
-        }
 
         $this->client = $fch($client_id);
         if (!isset($this->client)) {
@@ -269,17 +300,12 @@ class AuthServer
             } elseif ($authType == 'Basic') {
                 $client_secret = $auth['password'];
             } else {
-                throw new \Exception('Missing client_secret');
+                throw new \Exception('Missing client_secret.');
             }
 
             if ($this->client->getClientSecret() !== $client_secret) {
-                throw new \Exception('Incorrect client credentials');
+                throw new \Exception('Incorrect client credentials.');
             }
-        }
-
-        $fach = $this->findAuthorizationCodeHandler;
-        if (!is_callable($fach)) {
-            throw new \Exception('Callable findAuthorizationCodeHandler not found');
         }
         $authCode = $fach($code);
 
@@ -292,10 +318,13 @@ class AuthServer
         if ($authCode->isExpired()) {
             throw new \Exception('Authorization code expired.');
         }
-        $authCode = $authCode->withRedeemTime(time());
-        $authCode->save();
 
-        $accessToken = new AccessToken('abc','Bearer', 3600, 'def');
+        $resourceOwner = $froh($authCode->getOwnerId());
+
+        $authCode = $authCode->withRedeemTime(time());
+        $uacrth($authCode);
+
+        $accessToken = $cath($this->client, $resourceOwner, $authCode->getScope());
 
         $response = new Response();
         return $response;
