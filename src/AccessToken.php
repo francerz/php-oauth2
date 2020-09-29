@@ -2,6 +2,10 @@
 
 namespace Francerz\OAuth2;
 
+use Francerz\Http\Helpers\MessageHelper;
+use Psr\Http\Message\MessageInterface;
+use Psr\Http\Message\RequestInterface;
+
 class AccessToken implements \JsonSerializable
 {
 
@@ -13,6 +17,18 @@ class AccessToken implements \JsonSerializable
     private $parameters = array();
 
     private $createTime;
+
+    public static function fromHttpMessage(MessageInterface $message) : AccessToken
+    {
+        $at = MessageHelper::getContent($message);
+
+        return new static(
+            $at->access_token,
+            $at->type,
+            $at->expires_in,
+            $at->refresh_token
+        );
+    }
 
     public function __construct(
         string $accessToken,

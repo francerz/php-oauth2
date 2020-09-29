@@ -3,7 +3,9 @@
 namespace Francerz\OAuth2\Roles;
 
 use Francerz\Http\Client as HttpClient;
+use Francerz\Http\Helpers\MessageHelper;
 use Francerz\Http\Helpers\UriHelper;
+use Francerz\OAuth2\AccessToken;
 use Francerz\OAuth2\Flow\RedeemCodeRequest;
 use Francerz\PowerData\Functions;
 use InvalidArgumentException;
@@ -18,6 +20,8 @@ class AuthClient
     private $tokenEndpoint; // UriInterface
 
     private $checkStateHandler; // callback
+
+    private $access_token;
 
     public function __construct(
         ?string $clientId = null,
@@ -79,6 +83,18 @@ class AuthClient
         return $this->tokenEndpoint;
     }
 
+    public function withAccessToken(AccessToken $access_token)
+    {
+        $new = clone $this;
+        $new->access_token = $access_token;
+        return $new;
+    }
+
+    public function getAccessToken() : AccessToken
+    {
+        return $this->access_token;
+    }
+
     public function setCheckStateHandler(callable $handler)
     {
         if (!Functions::testSignature($handler, ['string'], 'bool')) {
@@ -112,8 +128,13 @@ class AuthClient
         $redeemReqReq = $redeemReq->getRequest();
 
         $client = new HttpClient();
-        $resp = $client->send($redeemReqReq);
+        $response = $client->send($redeemReqReq);
 
-        
+        if ($response->getStatusCode() >= 400) {
+            $resp = MessageHelper::getContent($response);
+            throw new \Exception($resp->error.': '.PHP_EOL.$resp->error_description);
+        }
+
+        $this->access_token = AccessToken::fromHttpMessage($response);
     }
 }
