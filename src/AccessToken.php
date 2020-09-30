@@ -26,9 +26,10 @@ class AccessToken implements \JsonSerializable
 
         return new static(
             $at->access_token,
-            $at->type,
+            $at->token_type,
             $at->expires_in,
-            $at->refresh_token
+            $at->refresh_token,
+            null, // createTime (not in standard)
         );
     }
 
