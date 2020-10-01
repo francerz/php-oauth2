@@ -329,7 +329,7 @@ class AuthServer
 
         $accessToken = $cath($this->client, $resourceOwner, $scopes);
 
-        BodyParsers::register(new JsonParser());
+        BodyParsers::register(JsonParser::class);
         $response = new Response();
         $response = $response
             ->withStatus(StatusCodes::OK)
