@@ -71,6 +71,11 @@ class AccessToken implements \JsonSerializable
         return ($this->getExpireTime() >= time() - $s);
     }
 
+    public function __toString()
+    {
+        return $this->tokenType . ' ' . $this->accessToken;
+    }
+
     #region Property Accesors
     public function getAccessToken() : string
     {
