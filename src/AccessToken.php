@@ -28,7 +28,7 @@ class AccessToken implements \JsonSerializable
             $at->access_token,
             $at->token_type,
             $at->expires_in,
-            $at->refresh_token,
+            isset($at->refresh_token) ? $at->refresh_token : null,
             null, // createTime (not in standard)
         );
     }
