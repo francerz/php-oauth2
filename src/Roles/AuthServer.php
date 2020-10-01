@@ -231,7 +231,7 @@ class AuthServer
 
     public function handleTokenRequest(RequestInterface $request) : ResponseInterface
     {
-        BodyParsers::register(new UrlEncodedParser());
+        BodyParsers::register(UrlEncodedParser::class);
         $params = MessageHelper::getContent($request);
 
         if (empty($params)) {
