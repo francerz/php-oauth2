@@ -104,7 +104,7 @@ class AuthClient
         $this->checkStateHandler = $handler;
     }
 
-    public function handleAuthCodeRequest(RequestInterface $request)
+    public function handleAuthCodeRequest(RequestInterface $request) : ?AccessToken
     {
         $params = UriHelper::getQueryParams($request->getUri());
 
@@ -136,5 +136,7 @@ class AuthClient
         }
 
         $this->access_token = AccessToken::fromHttpMessage($response);
+
+        return $this->access_token;
     }
 }
