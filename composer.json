@@ -1,16 +1,6 @@
 {
     "name": "francerz/php-oauth2",
     "description": "PHP OAuth2 support library",
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/francerz/php-power-data"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/francerz/php-http"
-        }
-    ],
     "autoload": {
         "psr-4" : {
             "Francerz\\OAuth2\\" : "src"
@@ -18,8 +8,8 @@
     },
     "require": {
         "psr/http-message": "^1.0",
-        "francerz/php-http": "dev-master",
-        "francerz/php-power-data": "dev-master"
+        "francerz/php-http": "^0.1",
+        "francerz/php-power-data": "^0.1"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.2"

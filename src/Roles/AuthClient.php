@@ -6,10 +6,11 @@ use Francerz\Http\Client as HttpClient;
 use Francerz\Http\Helpers\MessageHelper;
 use Francerz\Http\Helpers\UriHelper;
 use Francerz\OAuth2\AccessToken;
-use Francerz\OAuth2\Flow\RedeemCodeRequest;
+use Francerz\OAuth2\Flow\RedeemCodeRequestBuilder;
 use Francerz\PowerData\Functions;
 use InvalidArgumentException;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
 
 class AuthClient
@@ -18,6 +19,7 @@ class AuthClient
     private $clientSecret; // string
     private $authorizationEndpoint; // UriInterface
     private $tokenEndpoint; // UriInterface
+    private $callbackEndpoint; // UriInterface
 
     private $checkStateHandler; // callback
 
@@ -27,70 +29,84 @@ class AuthClient
         ?string $clientId = null,
         ?string $clientSecret = null,
         UriInterface $tokenEndpoint = null,
-        UriInterface $authorizationEndpoint = null
+        UriInterface $authorizationEndpoint = null,
+        UriInterface $callbackEndpoint = null
     ) {
         $this->clientId = $clientId;
         $this->clientSecret = $clientSecret;
         $this->tokenEndpoint = $tokenEndpoint;
         $this->authorizationEndpoint = $authorizationEndpoint;
+        $this->callbackEndpoint = $callbackEndpoint;
     }
 
-    public function withClientId(string $clientId)
+    public function withClientId(string $clientId) : AuthClient
     {
         $new = clone $this;
         $new->clientId = $clientId;
         return $new;
     }
 
-    public function getClientId() : string
+    public function getClientId() : ?string
     {
         return $this->clientId;
     }
 
-    public function withClientSecret(string $clientSecret)
+    public function withClientSecret(string $clientSecret) : AuthClient
     {
         $new = clone $this;
         $new->clientSecret = $clientSecret;
         return $new;
     }
     
-    public function getClientSecret() : string
+    public function getClientSecret() : ?string
     {
         return $this->clientSecret;
     }
 
-    public function withAuthorizationEndpoint(UriInterface $authorizationEndpoint)
+    public function withAuthorizationEndpoint(UriInterface $authorizationEndpoint) : AuthClient
     {
         $new = clone $this;
         $new->authorizationEndpoint = $authorizationEndpoint;
         return $new;
     }
 
-    public function getAuthorizationEndpoint() : UriInterface
+    public function getAuthorizationEndpoint() : ?UriInterface
     {
         return $this->authorizationEndpoint;
     }
 
-    public function withTokenEndpoint(UriInterface $tokenEndpoint)
+    public function withTokenEndpoint(UriInterface $tokenEndpoint) : AuthClient
     {
         $new = clone $this;
         $new->tokenEndpoint = $tokenEndpoint;
         return $new;
     }
 
-    public function getTokenEndpoint() : UriInterface
+    public function getTokenEndpoint() : ?UriInterface
     {
         return $this->tokenEndpoint;
     }
 
-    public function withAccessToken(AccessToken $access_token)
+    public function withCallbackEndpoint(UriInterface $callbackEndpoint) : AuthClient
+    {
+        $new = clone $this;
+        $new->callbackEndpoint = $callbackEndpoint;
+        return $new;
+    }
+
+    public function getCallbackEndpoint() : ?UriInterface
+    {
+        return $this->callbackEndpoint;
+    }
+
+    public function withAccessToken(AccessToken $access_token) : AuthClient
     {
         $new = clone $this;
         $new->access_token = $access_token;
         return $new;
     }
 
-    public function getAccessToken() : AccessToken
+    public function getAccessToken() : ?AccessToken
     {
         return $this->access_token;
     }
@@ -104,7 +120,7 @@ class AuthClient
         $this->checkStateHandler = $handler;
     }
 
-    public function handleAuthCodeRequest(RequestInterface $request) : ?AccessToken
+    public function getRedeemAuthCodeRequest(RequestInterface $request) : RequestInterface
     {
         $params = UriHelper::getQueryParams($request->getUri());
 
@@ -124,19 +140,27 @@ class AuthClient
         }
 
         $code = $params['code'];
-        $redeemReq = new RedeemCodeRequest($this, $code);
-        $redeemReqReq = $redeemReq->getRequest();
+        $redeemReq = new RedeemCodeRequestBuilder($this, $code);
+        return $redeemReq->getRequest();
+    }
 
-        $client = new HttpClient();
-        $response = $client->send($redeemReqReq);
-
+    public function getAccessTokenFromResponse(ResponseInterface $response) : AccessToken
+    {
         if ($response->getStatusCode() >= 400) {
             $resp = MessageHelper::getContent($response);
             throw new \Exception($resp->error.': '.PHP_EOL.$resp->error_description);
         }
 
-        $this->access_token = AccessToken::fromHttpMessage($response);
+        return AccessToken::fromHttpMessage($response);
+    }
 
-        return $this->access_token;
+    public function handleAuthCodeRequest(RequestInterface $request) : ?AccessToken
+    {
+        $redeemReqReq = $this->getRedeemAuthCodeRequest($request);
+
+        $client = new HttpClient();
+        $response = $client->send($redeemReqReq);
+
+        return $this->access_token = $this->getAccessTokenFromResponse($response);
     }
 }

@@ -23,6 +23,7 @@ use Francerz\OAuth2\ClientInterface;
 use Francerz\OAuth2\ResourceOwnerInterface;
 use Francerz\PowerData\Functions;
 use InvalidArgumentException;
+use Psr\Http\Message\UriInterface;
 
 class AuthServer
 {
@@ -82,8 +83,8 @@ class AuthServer
      */
     public function setCreateAuthorizationCodeHandler(callable $handler)
     {
-        if (!Functions::testSignature($handler, [ClientInterface::class, ResourceOwnerInterface::class, 'array'], 'string')) {
-            throw new InvalidArgumentException('Function expected signature is: (ClientInterface $client, ResourceOwnerInterface $owner, string[] scopes) : string');
+        if (!Functions::testSignature($handler, [ClientInterface::class, ResourceOwnerInterface::class, 'array', UriInterface::class], 'string')) {
+            throw new InvalidArgumentException('Function expected signature is: (ClientInterface $client, ResourceOwnerInterface $owner, string[] scopes, UriInterface $redirect_uri) : string');
         }
 
         $this->createAuthorizationCodeHandler = $handler;
@@ -211,11 +212,11 @@ class AuthServer
             );
         }
 
-        $this->authorizationCode = $cach($this->client, $this->resourceOwner, $this->scopes);
-        
         $redirect_uri_str = UriHelper::getQueryParam($request->getUri(), 'redirect_uri');
         $redirect_uri = new Uri($redirect_uri_str);
         $state = UriHelper::getQueryParam($request->getUri(), 'state');
+
+        $this->authorizationCode = $cach($this->client, $this->resourceOwner, $this->scopes, $redirect_uri);
 
         $redirect_uri = $redirect_uri->withQueryParams(array(
             'state' => $state,
@@ -278,36 +279,41 @@ class AuthServer
         }
         #endregion
 
+        $client_id = '';
+        $client_secret = '';
+
+        $auth = MessageHelper::getAuthorizationHeader($request, $authType, $authContent);
         $params = MessageHelper::getContent($request);
-        if (!array_key_exists('code', $params)) {
-            throw new \Exception('Missing code parameter.');
+
+        if (strcasecmp($authType, 'Basic') === 0) {
+            $client_id = $auth['user'];
+            $client_secret = $auth['password'];
+        } else {
+            if (!array_key_exists('client_id', $params)) {
+                throw new \Exception('Missing client_id parameter.');
+            }
+            $client_id = $params['client_id'];
+            if ($this->client->isConfidential()) {
+                if (array_key_exists('client_secret', $params)) {
+                    throw new \Exception('Missing client_secret.');
+                }
+                $client_secret = $params['client_secret'];
+            }
         }
-        $code = $params['code'];
-        if (!array_key_exists('client_id', $params)) {
-            throw new \Exception('Missing client_id parameter.');
-        }
-        $client_id = $params['client_id'];
 
         $this->client = $fch($client_id);
         if (!isset($this->client)) {
             throw new InvalidRequestException('Unknown client_id.');
         }
 
-        if ($this->client->isConfidential()) {
-            $auth = MessageHelper::getAuthorizationHeader($request, $authType, $authContent);
-
-            if (array_key_exists('client_secret', $params)) {
-                $client_secret = $params['client_secret'];
-            } elseif ($authType == 'Basic') {
-                $client_secret = $auth['password'];
-            } else {
-                throw new \Exception('Missing client_secret.');
-            }
-
-            if ($this->client->getClientSecret() !== $client_secret) {
-                throw new \Exception('Incorrect client credentials.');
-            }
+        if ($this->client->isConfidential() && $this->client->getClientSecret() !== $client_secret) {
+            throw new \Exception('Incorrect client credentials.');
         }
+
+        if (!array_key_exists('code', $params)) {
+            throw new \Exception('Missing code parameter.');
+        }
+        $code = $params['code'];
         $authCode = $fach($code);
 
         if ($authCode->getClientId() != $client_id) {

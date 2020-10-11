@@ -17,11 +17,11 @@ class AuthorizationCodeRequestTest extends TestCase
         );
 
         $authReq = new AuthorizationCodeRequest($authClient);
-        $req = $authReq->getRequest();
+        $reqUri = $authReq->getRequestUri();
 
         $this->assertEquals(
             'https://example.com/oauth2/auth?response_type=code&client_id=abcdefg',
-            (string)$req->getUri()
+            (string)$reqUri
         );
     }
 }

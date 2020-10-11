@@ -10,7 +10,7 @@ use Francerz\OAuth2\GrantTypes;
 use Francerz\OAuth2\Roles\AuthClient;
 use Psr\Http\Message\RequestInterface;
 
-class RedeemCodeRequest
+class RedeemCodeRequestBuilder
 {
     private $authClient;
     private $code;
@@ -55,13 +55,14 @@ class RedeemCodeRequest
         }
 
         $uri = $this->authClient->getTokenEndpoint();
+        
+        
 
         $request = new Request($uri);
         $request = $request->withMethod(Methods::POST);
         $requestBody = new UrlEncodedParams(array(
             'grant_type' => GrantTypes::AUTHORIZATION_CODE,
             'code' => $this->code,
-            'client_id' => $this->authClient->getClientId()
         ));
 
         if (true) {
@@ -71,8 +72,15 @@ class RedeemCodeRequest
                 $this->authClient->getClientSecret()
             );
         } else {
+            $requestBody['client_id'] = $this->authClient->getClientId();
             $requestBody['client_secret'] = $this->authClient->getClientSecret();
         }
+        
+        $callbackEndpoint = $this->authClient->getCallbackEndpoint();
+        if (isset($callbackEndpoint)) {
+            $requestBody['redirect_uri'] = (string)$callbackEndpoint;
+        }
+
         $request = $request->withBody($requestBody->getStringStream());
         $request = $request->withHeader('Content-Type', MediaTypes::APPLICATION_X_WWW_FORM_URLENCODED);
 

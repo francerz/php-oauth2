@@ -3,6 +3,7 @@
 namespace Francerz\OAuth2;
 
 use Francerz\OAuth2\AuthCodeInterface;
+use Psr\Http\Message\UriInterface;
 
 class AuthCode implements AuthCodeInterface
 {
@@ -13,6 +14,7 @@ class AuthCode implements AuthCodeInterface
     private $lifetime;
     private $createTime;
     private $redeemTime;
+    private $redirectUri;
 
     private $params = array();
 
@@ -21,6 +23,7 @@ class AuthCode implements AuthCodeInterface
         string $ownerId,
         string $code,
         string $scope,
+        UriInterface $redirectUri,
         int $lifetime = 600,
         int $createTime = null,
         int $redeemTime = null
@@ -29,8 +32,9 @@ class AuthCode implements AuthCodeInterface
         $this->ownerId = $ownerId;
         $this->code = $code;
         $this->scope = $scope;
+        $this->redirectUri = $redirectUri;
         $this->lifetime = $lifetime;
-        $this->createTime = $createTime;
+        $this->createTime = isset($createTime) ? $createTime : time();
         $this->redeemTime = $redeemTime;
     }
 
@@ -104,6 +108,18 @@ class AuthCode implements AuthCodeInterface
     public function getRedeemTime(): int
     {
         return $this->redeemTime;
+    }
+
+    public function withRedirectUri(UriInterface $uri): AuthCodeInterface
+    {
+        $new = clone $this;
+        $new->redirectUri = $uri;
+        return $new;
+    }
+
+    public function getRedirectUri(): UriInterface
+    {
+        return $this->redirectUri;
     }
 
     public function getExpireTime(): int

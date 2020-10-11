@@ -2,6 +2,8 @@
 
 namespace Francerz\OAuth2;
 
+use Psr\Http\Message\UriInterface;
+
 interface AuthCodeInterface
 {
     public function withClientId(string $client_id) : AuthCodeInterface;
@@ -21,6 +23,9 @@ interface AuthCodeInterface
 
     public function withRedeemTime(int $epoch) : AuthCodeInterface;
     public function getRedeemTime() : int;
+
+    public function withRedirectUri(UriInterface $uri) : AuthCodeInterface;
+    public function getRedirectUri() : UriInterface;
 
     public function getExpireTime() : int;
     public function isUsed() : bool;
