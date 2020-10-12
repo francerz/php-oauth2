@@ -8,8 +8,8 @@
     },
     "require": {
         "psr/http-message": "^1.0",
-        "francerz/php-http": "^0.1",
-        "francerz/php-power-data": "^0.1"
+        "francerz/php-http": "dev-master",
+        "francerz/php-power-data": "dev-master"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.2"

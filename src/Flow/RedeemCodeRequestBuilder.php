@@ -65,15 +65,15 @@ class RedeemCodeRequestBuilder
             'code' => $this->code,
         ));
 
-        if (true) {
+        if ($this->authClient->isBodyAuthenticationPreferred()) {
+            $requestBody['client_id'] = $this->authClient->getClientId();
+            $requestBody['client_secret'] = $this->authClient->getClientSecret();
+        } else {
             $request = $request->withAuthorizationHeader(
                 'Basic',
                 $this->authClient->getClientId() . ':' .
                 $this->authClient->getClientSecret()
             );
-        } else {
-            $requestBody['client_id'] = $this->authClient->getClientId();
-            $requestBody['client_secret'] = $this->authClient->getClientSecret();
         }
         
         $callbackEndpoint = $this->authClient->getCallbackEndpoint();

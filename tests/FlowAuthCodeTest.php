@@ -35,7 +35,7 @@ class FlowAuthCodeTest extends TestCase
         $server->setFindResourceOwnerHandler(function(string $ownerUniqueId) : ResourceOwnerInterface {
             return new ResourceOwner($ownerUniqueId);
         });
-        $server->setCreateAuthorizationCodeHandler(function(ClientInterface $client, ResourceOwnerInterface $owner, array $scopes, UriInterface $redirectUri) : string {
+        $server->setCreateAuthorizationCodeHandler(function(ClientInterface $client, ResourceOwnerInterface $owner, string $scope, UriInterface $redirectUri) : string {
             return 'abcdefghijklmnopqrstuvwxyz';
         });
         $server->setFindAuthorizationCodeHandler(function(string $code) : AuthCodeInterface {
@@ -53,7 +53,7 @@ class FlowAuthCodeTest extends TestCase
         $server->setCreateAccessTokenHandler(function(
             ClientInterface $client,
             ResourceOwnerInterface $owner,
-            array $scopes
+            string $scope
         ) : AccessToken {
             return new AccessToken('zyxwvutsrqponmlkjihgfedcba', 'Bearer', 3600, 'AbCdEfGhIjKlMnOpQrStUvWxYz');
         });

@@ -2,9 +2,13 @@
 
 namespace Francerz\OAuth2\Roles;
 
+use Francerz\Http\Base\MessageBase;
 use Francerz\Http\Client as HttpClient;
 use Francerz\Http\Helpers\MessageHelper;
 use Francerz\Http\Helpers\UriHelper;
+use Francerz\Http\MediaTypes;
+use Francerz\Http\Request;
+use Francerz\Http\UrlEncodedParams;
 use Francerz\OAuth2\AccessToken;
 use Francerz\OAuth2\Flow\RedeemCodeRequestBuilder;
 use Francerz\PowerData\Functions;
@@ -24,6 +28,8 @@ class AuthClient
     private $checkStateHandler; // callback
 
     private $access_token;
+
+    private $preferBodyAuthenticationFlag = false;
 
     public function __construct(
         ?string $clientId = null,
@@ -120,6 +126,16 @@ class AuthClient
         $this->checkStateHandler = $handler;
     }
 
+    public function preferBodyAuthentication(bool $prefer)
+    {
+        $this->preferBodyAuthenticationFlag = $prefer;
+    }
+
+    public function isBodyAuthenticationPreferred() : bool
+    {
+        return $this->preferBodyAuthenticationFlag;
+    }
+
     public function getRedeemAuthCodeRequest(RequestInterface $request) : RequestInterface
     {
         $params = UriHelper::getQueryParams($request->getUri());
@@ -162,5 +178,32 @@ class AuthClient
         $response = $client->send($redeemReqReq);
 
         return $this->access_token = $this->getAccessTokenFromResponse($response);
+    }
+
+    public function getFetchAccessTokenWithRefreshTokenRequest(string $refreshToken) : RequestInterface
+    {
+        $bodyParams = new UrlEncodedParams(array(
+            'grant_type' => 'refresh_token',
+            'refresh_token' => $refreshToken
+        ));
+
+        $request = new Request($this->tokenEndpoint);
+
+        if ($this->preferBodyAuthenticationFlag) {
+            $bodyParams['client_id'] = $this->getClientId();
+            $bodyParams['client_secret'] = $this->getClientSecret();
+        } else {
+            $request = $request->withAuthorizationHeader(
+                'Basic',
+                $this->getClientId() . ':' .
+                $this->getClientSecret()
+            );
+        }
+
+        $request = $request
+            ->withHeader('Content-Type', MediaTypes::APPLICATION_X_WWW_FORM_URLENCODED)
+            ->withBody($bodyParams->getStringStream());
+
+        return $request;
     }
 }

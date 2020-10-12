@@ -2,6 +2,7 @@
 
 namespace Francerz\OAuth2\Roles;
 
+use Francerz\Http\Base\MessageBase;
 use Francerz\Http\BodyParsers;
 use Francerz\Http\Helpers\MessageHelper;
 use Francerz\Http\Helpers\UriHelper;
@@ -20,6 +21,7 @@ use Francerz\OAuth2\Exceptions\UnavailableResourceOwnerException;
 use Francerz\OAuth2\GrantTypes;
 use Francerz\OAuth2\AuthCodeInterface;
 use Francerz\OAuth2\ClientInterface;
+use Francerz\OAuth2\RefreshTokenInterface;
 use Francerz\OAuth2\ResourceOwnerInterface;
 use Francerz\PowerData\Functions;
 use InvalidArgumentException;
@@ -32,6 +34,7 @@ class AuthServer
     private $findAuthorizationCodeHandler;
     private $findClientHandler;
     private $findResourceOwnerHandler;
+    private $findRefreshTokenHandler;
     private $getResourceOwnerHandler;
     private $updateAuthorizationCodeRedeemTimeHandler;
 
@@ -78,13 +81,13 @@ class AuthServer
      * Sets a callback handler to get a Authorization Code string given with
      * an ClientInterface object, ResourceOwnerInterface object and scopes.
      *
-     * @param callable $handler (ClientInterface $client, ResourceOwnerInterface $owner, string[] scopes) : string
+     * @param callable $handler (ClientInterface $client, ResourceOwnerInterface $owner, string scope) : string
      * @return void
      */
     public function setCreateAuthorizationCodeHandler(callable $handler)
     {
-        if (!Functions::testSignature($handler, [ClientInterface::class, ResourceOwnerInterface::class, 'array', UriInterface::class], 'string')) {
-            throw new InvalidArgumentException('Function expected signature is: (ClientInterface $client, ResourceOwnerInterface $owner, string[] scopes, UriInterface $redirect_uri) : string');
+        if (!Functions::testSignature($handler, [ClientInterface::class, ResourceOwnerInterface::class, 'string', UriInterface::class], 'string')) {
+            throw new InvalidArgumentException('Function expected signature is: (ClientInterface $client, ResourceOwnerInterface $owner, string scope, UriInterface $redirect_uri) : string');
         }
 
         $this->createAuthorizationCodeHandler = $handler;
@@ -119,17 +122,17 @@ class AuthServer
     /**
      * Undocumented function
      *
-     * @param callable $handler (ClientInterface $client, ResourceOwnerInterface $owner, array $scopes)
+     * @param callable $handler (ClientInterface $client, ResourceOwnerInterface $owner, string $scopes)
      * @return void
      */
     public function setCreateAccessTokenHandler(callable $handler)
     {
         if (!Functions::testSignature(
             $handler,
-            [ClientInterface::class, ResourceOwnerInterface::class, 'array'],
+            [ClientInterface::class, ResourceOwnerInterface::class, 'string'],
             AccessToken::class)
         ) {
-            throw new InvalidArgumentException('Function expected signature is: (ClientInterface $client, ResourceOwnerInterface $owner, array $scopes) : AccessToken');
+            throw new InvalidArgumentException('Function expected signature is: (ClientInterface $client, ResourceOwnerInterface $owner, string $scope) : AccessToken');
         }
 
         $this->createAccessTokenHandler = $handler;
@@ -142,6 +145,15 @@ class AuthServer
         }
 
         $this->findResourceOwnerHandler = $handler;
+    }
+
+    public function setFindRefreshTokenHandler(callable $handler)
+    {
+        if (!Functions::testSignature($handler, ['string'], RefreshTokenInterface::class)) {
+            throw new InvalidArgumentException('Function expected signature is: (string $refreshToken) : RefreshTokenInterface');
+        }
+
+        $this->findRefreshTokenHandler = $handler;
     }
     #endregion
 
@@ -201,8 +213,8 @@ class AuthServer
             throw new UnavailableResourceOwnerException('Resource owner not found.');
         }
 
-        $scope_str = UriHelper::getQueryParam($request->getUri(), 'scope');
-        $this->scopes = explode(' ', $scope_str);
+        $scope = UriHelper::getQueryParam($request->getUri(), 'scope');
+        $this->scopes = explode(' ', $scope);
 
         $cach = $this->createAuthorizationCodeHandler;
         if (!is_callable($cach)) {
@@ -216,7 +228,7 @@ class AuthServer
         $redirect_uri = new Uri($redirect_uri_str);
         $state = UriHelper::getQueryParam($request->getUri(), 'state');
 
-        $this->authorizationCode = $cach($this->client, $this->resourceOwner, $this->scopes, $redirect_uri);
+        $this->authorizationCode = $cach($this->client, $this->resourceOwner, $scope, $redirect_uri);
 
         $redirect_uri = $redirect_uri->withQueryParams(array(
             'state' => $state,
@@ -246,17 +258,78 @@ class AuthServer
         switch($params['grant_type']) {
             case GrantTypes::AUTHORIZATION_CODE:
                 return $this->handleTokenRequestCode($request);
-                break;
+            case GrantTypes::REFRESH_TOKEN:
+                return $this->handleTokenRequestRefreshToken($request);
         }
+    }
+
+    private function getClientCredentials(
+        RequestInterface $request,
+        ?string &$client_id = '',
+        ?string &$client_secret = ''
+    ) {
+        $auth = MessageHelper::getAuthorizationHeader($request, $authType, $authContent);
+
+        if (strcasecmp($authType, 'Basic') === 0) {
+            $client_id = $auth['user'];
+            $client_secret = $auth['password'];
+            return;
+        }
+        $params = MessageHelper::getContent($request);
+        if (array_key_exists('client_id', $params)) {
+            $client_id = $params['client_id'];
+        }
+        if (array_key_exists('client_secret', $params)) {
+            $client_secret = $params['client_secret'];
+        }
+    }
+
+    private function checkClientCredentials(RequestInterface $request)
+    {
+        $fch = $this->findClientHandler;
+        if (!is_callable($fch)) {
+            throw new AuthServerException('Callable findClientHandler not found.');
+        }
+
+        $this->getClientCredentials($request, $client_id, $client_secret);
+
+        if (empty($client_id)) {
+            throw new \Exception('Missing client_id.');
+        }
+
+        $this->client = $fch($client_id);
+        if (!isset($this->client)) {
+            throw new InvalidRequestException('Unknown client_id.');
+        }
+
+        if ($this->client->isConfidential()) {
+            if (empty($client_secret)) {
+                throw new \Exception('Missing client_secret.');
+            }
+            if ($this->client->getClientSecret() !== $client_secret) {
+                throw new \Exception('Incorrect client credentials.');
+            }
+        }
+
+        return true;
+    }
+
+    private function buildAccessTokenResponse(AccessToken $accessToken) : ResponseInterface
+    {
+        BodyParsers::register(JsonParser::class);
+        $response = new Response();
+        $response = $response
+            ->withStatus(StatusCodes::OK)
+            ->withHeader('Cache-Control', 'no-store')
+            ->withHeader('Pragma', 'no-cache');
+        $response = MessageHelper::withContent($response, MediaTypes::APPLICATION_JSON, $accessToken);
+        
+        return $response;
     }
 
     private function handleTokenRequestCode(RequestInterface $request) : ResponseInterface
     {
         #region Callable checks
-        $fch = $this->findClientHandler;
-        if (!is_callable($fch)) {
-            throw new AuthServerException('Callable findClientHandler not found.');
-        }
 
         $fach = $this->findAuthorizationCodeHandler;
         if (!is_callable($fach)) {
@@ -279,36 +352,9 @@ class AuthServer
         }
         #endregion
 
-        $client_id = '';
-        $client_secret = '';
-
-        $auth = MessageHelper::getAuthorizationHeader($request, $authType, $authContent);
+        $this->checkClientCredentials($request);
+       
         $params = MessageHelper::getContent($request);
-
-        if (strcasecmp($authType, 'Basic') === 0) {
-            $client_id = $auth['user'];
-            $client_secret = $auth['password'];
-        } else {
-            if (!array_key_exists('client_id', $params)) {
-                throw new \Exception('Missing client_id parameter.');
-            }
-            $client_id = $params['client_id'];
-            if ($this->client->isConfidential()) {
-                if (array_key_exists('client_secret', $params)) {
-                    throw new \Exception('Missing client_secret.');
-                }
-                $client_secret = $params['client_secret'];
-            }
-        }
-
-        $this->client = $fch($client_id);
-        if (!isset($this->client)) {
-            throw new InvalidRequestException('Unknown client_id.');
-        }
-
-        if ($this->client->isConfidential() && $this->client->getClientSecret() !== $client_secret) {
-            throw new \Exception('Incorrect client credentials.');
-        }
 
         if (!array_key_exists('code', $params)) {
             throw new \Exception('Missing code parameter.');
@@ -316,7 +362,7 @@ class AuthServer
         $code = $params['code'];
         $authCode = $fach($code);
 
-        if ($authCode->getClientId() != $client_id) {
+        if ($authCode->getClientId() != $this->client->getClientId()) {
             throw new \Exception('Authorization code not matching with client credentials.');
         }
         if ($authCode->isUsed()) {
@@ -331,17 +377,49 @@ class AuthServer
         $authCode = $authCode->withRedeemTime(time());
         $uacrth($authCode);
 
-        $scopes = explode(' ', $authCode->getScope());
+        $accessToken = $cath($this->client, $resourceOwner, $authCode->getScope());
 
-        $accessToken = $cath($this->client, $resourceOwner, $scopes);
+        $response = $this->buildAccessTokenResponse($accessToken);
 
-        BodyParsers::register(JsonParser::class);
-        $response = new Response();
-        $response = $response
-            ->withStatus(StatusCodes::OK)
-            ->withHeader('Cache-Control', 'no-store')
-            ->withHeader('Pragma', 'no-cache');
-        $response = MessageHelper::withContent($response, MediaTypes::APPLICATION_JSON, $accessToken);
+        return $response;
+    }
+
+    private function handleTokenRequestRefreshToken(RequestInterface $request) : ResponseInterface
+    {
+        $this->checkClientCredentials($request);
+
+        $frth = $this->findRefreshTokenHandler;
+        if (!is_callable($frth)) {
+            throw new \Exception('Callable findRefreshTokenHandler not found.');
+        }
+        $froh = $this->findResourceOwnerHandler;
+        if (!is_callable($froh)) {
+            throw new \Exception('Callable findResourceOwnerHandler not found.');
+        }
+        $cath = $this->createAccessTokenHandler;
+        if (!is_callable($cath)) {
+            throw new \Exception('Callable createAccessTokenHandler not found.');
+        }
+        
+        $params = MessageHelper::getContent($request);
+
+        if (!array_key_exists('refresh_token', $params)) {
+            throw new \Exception('Missing refresh_token.');
+        }
+
+        $refreshToken = $frth($params['refresh_token']);
+        if (!isset($refreshToken)) {
+            throw new \Exception('Invalid refresh_token.');
+        }
+
+        $resourceOwner = $froh($refreshToken->getOwnerId());
+        if (!isset($resourceOwner)) {
+            throw new \Exception('Unknown Resource Owner.');
+        }
+
+        $accessToken = $cath($this->client, $resourceOwner, $refreshToken->getScope());
+
+        $response = $this->buildAccessTokenResponse($accessToken);
 
         return $response;
     }
