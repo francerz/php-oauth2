@@ -11,7 +11,6 @@ use Francerz\OAuth2\AuthCode;
 use Francerz\OAuth2\AuthCodeInterface;
 use Francerz\OAuth2\Client;
 use Francerz\OAuth2\ClientInterface;
-use Francerz\OAuth2\Flow\AuthorizationCodeRequest;
 use Francerz\OAuth2\ResourceOwner;
 use Francerz\OAuth2\ResourceOwnerInterface;
 use Francerz\OAuth2\Roles\AuthClient;
@@ -85,11 +84,7 @@ class FlowAuthCodeTest extends TestCase
      */
     public function testGetAuthorizationCodeRequestUri(AuthClient $client) : UriInterface
     {
-        $codeReq = new AuthorizationCodeRequest($client);
-        $codeReq = $codeReq
-            ->withState('qwerty')
-            ->withAddedScope(['scope1', 'scope2']);
-        $reqUri = $codeReq->getRequestUri();
+        $reqUri = $client->getAuthorizationCodeRequestUri(['scope1', 'scope2'], 'qwerty');
 
         $this->assertEquals('https', $reqUri->getScheme());
         $this->assertEquals('oauth2.server.com', $reqUri->getHost());
@@ -113,8 +108,10 @@ class FlowAuthCodeTest extends TestCase
      */
     public function testHandleAuthCodeRequest(AuthServer $server, UriInterface $uri)
     {
+        // Creates resquest from uri just like a browser would do.
         $request = new Request($uri);
 
+        // Starts the real test.
         $response = $server->handleAuthRequest($request);
 
         $location = $response->getHeaderLine('Location');
@@ -137,14 +134,15 @@ class FlowAuthCodeTest extends TestCase
      */
     public function testHandleAuthCodeResponse(AuthClient $client, ResponseInterface $response)
     {
+        // Creates request from redirection just like a browser would do.
         $location = $response->getHeaderLine('Location');
         $locUri = new Uri($location);
-
         $request = new Request($locUri);
+
+        // Starts the real test.
         $redeemAuthCodeRequest = $client->getRedeemAuthCodeRequest($request);
 
         $tokenUri = $redeemAuthCodeRequest->getUri();
-
         $this->assertEquals('https', $tokenUri->getScheme());
         $this->assertEquals('oauth2.server.com', $tokenUri->getHost());
         $this->assertEquals('/token', $tokenUri->getPath());

@@ -10,6 +10,7 @@ use Francerz\Http\MediaTypes;
 use Francerz\Http\Request;
 use Francerz\Http\UrlEncodedParams;
 use Francerz\OAuth2\AccessToken;
+use Francerz\OAuth2\Flow\AuthorizationCodeRequest;
 use Francerz\OAuth2\Flow\RedeemCodeRequestBuilder;
 use Francerz\PowerData\Functions;
 use InvalidArgumentException;
@@ -134,6 +135,15 @@ class AuthClient
     public function isBodyAuthenticationPreferred() : bool
     {
         return $this->preferBodyAuthenticationFlag;
+    }
+
+    public function getAuthorizationCodeRequestUri(array $scopes, string $state) : UriInterface
+    {
+        $authCodeReq = new AuthorizationCodeRequest($this);
+        $authCodeReq = $authCodeReq
+            ->withAddedScope($scopes)
+            ->withState($state);
+        return $authCodeReq->getRequestUri();
     }
 
     public function getRedeemAuthCodeRequest(RequestInterface $request) : RequestInterface
