@@ -1,13 +1,13 @@
 <?php
 
-namespace Francerz\OAuth2\Flow;
+namespace Francerz\OAuth2\Client;
 
-use Francerz\Http\MediaTypes;
-use Francerz\Http\Methods;
-use Francerz\Http\Request;
-use Francerz\Http\UrlEncodedParams;
+use Francerz\Http\Constants\MediaTypes;
+use Francerz\Http\Constants\Methods;
+use Francerz\Http\Headers\BasicAuthorizationHeader;
+use Francerz\Http\Tools\MessageHelper;
+use Francerz\OAuth2\Client\AuthClient;
 use Francerz\OAuth2\GrantTypes;
-use Francerz\OAuth2\Roles\AuthClient;
 use Psr\Http\Message\RequestInterface;
 
 class RedeemCodeRequestBuilder
@@ -56,23 +56,22 @@ class RedeemCodeRequestBuilder
 
         $uri = $this->authClient->getTokenEndpoint();
         
-        
-
-        $request = new Request($uri);
-        $request = $request->withMethod(Methods::POST);
-        $requestBody = new UrlEncodedParams(array(
-            'grant_type' => GrantTypes::AUTHORIZATION_CODE,
-            'code' => $this->code,
-        ));
+        $request = $this->authClient->getHttpFactory()->getRequestFactory()->createRequest(Methods::POST, $uri);
+        $requestBody = array(
+            'grant_type'=> GrantTypes::AUTHORIZATION_CODE,
+            'code'      => $this->code,
+        );
 
         if ($this->authClient->isBodyAuthenticationPreferred()) {
             $requestBody['client_id'] = $this->authClient->getClientId();
             $requestBody['client_secret'] = $this->authClient->getClientSecret();
         } else {
-            $request = $request->withAuthorizationHeader(
-                'Basic',
-                $this->authClient->getClientId() . ':' .
-                $this->authClient->getClientSecret()
+            $request = $request->withHeader(
+                'Authorization',
+                (string)new BasicAuthorizationHeader(
+                    $this->authClient->getClientId(),
+                    $this->authClient->getClientSecret()
+                )
             );
         }
         
@@ -81,8 +80,7 @@ class RedeemCodeRequestBuilder
             $requestBody['redirect_uri'] = (string)$callbackEndpoint;
         }
 
-        $request = $request->withBody($requestBody->getStringStream());
-        $request = $request->withHeader('Content-Type', MediaTypes::APPLICATION_X_WWW_FORM_URLENCODED);
+        $request = MessageHelper::withContent($request, MediaTypes::APPLICATION_X_WWW_FORM_URLENCODED, $requestBody);
 
         return $request;
     }

@@ -2,9 +2,7 @@
 
 namespace Francerz\OAuth2;
 
-use Francerz\Http\BodyParsers;
-use Francerz\Http\Helpers\MessageHelper;
-use Francerz\Http\Parsers\JsonParser;
+use Francerz\Http\Tools\MessageHelper;
 use Psr\Http\Message\MessageInterface;
 
 class AccessToken implements \JsonSerializable
@@ -21,7 +19,6 @@ class AccessToken implements \JsonSerializable
 
     public static function fromHttpMessage(MessageInterface $message) : AccessToken
     {
-        BodyParsers::register(JsonParser::class);
         $at = MessageHelper::getContent($message);
 
         return new static(

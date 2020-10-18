@@ -2,33 +2,32 @@
 
 namespace Francerz\OAuth2\Roles;
 
-use Francerz\Http\Base\MessageBase;
-use Francerz\Http\BodyParsers;
-use Francerz\Http\Helpers\MessageHelper;
-use Francerz\Http\Helpers\UriHelper;
-use Francerz\Http\MediaTypes;
-use Francerz\Http\Parsers\JsonParser;
-use Francerz\Http\Parsers\UrlEncodedParser;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
-use Francerz\Http\Uri;
-use Francerz\Http\Response;
-use Francerz\Http\StatusCodes;
+use Francerz\Http\Constants\MediaTypes;
+use Francerz\Http\Constants\StatusCodes;
+use Francerz\Http\Headers\BasicAuthorizationHeader;
+use Francerz\Http\Tools\HttpFactoryManager;
+use Francerz\Http\Tools\MessageHelper;
+use Francerz\Http\Tools\UriHelper;
 use Francerz\OAuth2\AccessToken;
 use Francerz\OAuth2\Exceptions\AuthServerException;
 use Francerz\OAuth2\Exceptions\InvalidRequestException;
 use Francerz\OAuth2\Exceptions\UnavailableResourceOwnerException;
 use Francerz\OAuth2\GrantTypes;
 use Francerz\OAuth2\AuthCodeInterface;
+use Francerz\OAuth2\AuthErrorCodes;
 use Francerz\OAuth2\ClientInterface;
 use Francerz\OAuth2\RefreshTokenInterface;
 use Francerz\OAuth2\ResourceOwnerInterface;
 use Francerz\PowerData\Functions;
 use InvalidArgumentException;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
 
 class AuthServer
 {
+    private $httpFactory;
+
     private $createAuthorizationCodeHandler;
     private $createAccessTokenHandler;
     private $findAuthorizationCodeHandler;
@@ -43,6 +42,11 @@ class AuthServer
     private $scopes;
 
     private $authorizationCode;
+
+    public function __construct(HttpFactoryManager $httpFactory)
+    {
+        $this->httpFactory = $httpFactory;
+    }
 
     #region set handlers methods
     /**
@@ -166,16 +170,16 @@ class AuthServer
                 return $this->handleAuthRequestCode($request);
             default:
                 $redirect_uri_str = UriHelper::getQueryParam($request->getUri(), 'redirect_uri');
-                $redirect_uri = new Uri($redirect_uri_str);
+                $redirect_uri = $this->httpFactory->getUriFactory()->createUri($redirect_uri_str);
 
                 $state = UriHelper::getQueryParam($request->getUri(), 'state');
-                $redirect_uri = $redirect_uri->withQueryParams(array(
+                $redirect_uri = UriHelper::withQueryParams($redirect_uri, array(
                     'state' => $state,
-                    'error' => 'unsupported_response_type'
+                    'error' => AuthErrorCodes::UNSUPPORTED_RESPONSE_TYPE
                 ));
 
-                $response = new Response();
-                $response = $response->withStatus(StatusCodes::FOUND);
+
+                $response = $this->httpFactory->getResponseFactory()->createResponse(StatusCodes::REDIRECT_FOUND);
                 $response = $response->withHeader('Location', $redirect_uri);
                 return $response;
         }
@@ -225,18 +229,17 @@ class AuthServer
         }
 
         $redirect_uri_str = UriHelper::getQueryParam($request->getUri(), 'redirect_uri');
-        $redirect_uri = new Uri($redirect_uri_str);
+        $redirect_uri = $this->httpFactory->getUriFactory()->createUri($redirect_uri_str);
         $state = UriHelper::getQueryParam($request->getUri(), 'state');
 
         $this->authorizationCode = $cach($this->client, $this->resourceOwner, $scope, $redirect_uri);
 
-        $redirect_uri = $redirect_uri->withQueryParams(array(
+        $redirect_uri = UriHelper::withQueryParams($redirect_uri, array(
             'state' => $state,
             'code' => $this->authorizationCode
         ));
 
-        $response = new Response();
-        $response = $response->withStatus(StatusCodes::FOUND);
+        $response = $this->httpFactory->getResponseFactory()->createResponse(StatusCodes::REDIRECT_FOUND);
         $response = $response->withHeader('Location', $redirect_uri);
 
         return $response;
@@ -244,7 +247,6 @@ class AuthServer
 
     public function handleTokenRequest(RequestInterface $request) : ResponseInterface
     {
-        BodyParsers::register(UrlEncodedParser::class);
         $params = MessageHelper::getContent($request);
 
         if (empty($params)) {
@@ -268,13 +270,14 @@ class AuthServer
         ?string &$client_id = '',
         ?string &$client_secret = ''
     ) {
-        $auth = MessageHelper::getAuthorizationHeader($request, $authType, $authContent);
+        $auth = MessageHelper::getAuthorizationHeader($request);
 
-        if (strcasecmp($authType, 'Basic') === 0) {
-            $client_id = $auth['user'];
-            $client_secret = $auth['password'];
+        if (isset($auth) && $auth instanceof BasicAuthorizationHeader) {
+            $client_id = $auth->getUser();
+            $client_secret = $auth->getPassword();
             return;
         }
+
         $params = MessageHelper::getContent($request);
         if (array_key_exists('client_id', $params)) {
             $client_id = $params['client_id'];
@@ -316,10 +319,8 @@ class AuthServer
 
     private function buildAccessTokenResponse(AccessToken $accessToken) : ResponseInterface
     {
-        BodyParsers::register(JsonParser::class);
-        $response = new Response();
+        $response = $this->httpFactory->getResponseFactory()->createResponse(StatusCodes::SUCCESS_OK);
         $response = $response
-            ->withStatus(StatusCodes::OK)
             ->withHeader('Cache-Control', 'no-store')
             ->withHeader('Pragma', 'no-cache');
         $response = MessageHelper::withContent($response, MediaTypes::APPLICATION_JSON, $accessToken);

@@ -1,9 +1,9 @@
 <?php
 
-namespace Francerz\OAuth2\Flow;
+namespace Francerz\OAuth2\Client;
 
-use Francerz\Http\Helpers\UriHelper;
-use Francerz\OAuth2\Roles\AuthClient;
+use Francerz\Http\Tools\UriHelper;
+use Francerz\OAuth2\Client\AuthClient;
 use Psr\Http\Message\UriInterface;
 
 class AuthorizationCodeRequest

@@ -4,38 +4,49 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1450072e863ea6003a9ec8b7cac79895",
+    "content-hash": "28f6ef495058c8929a468350b52c3c08",
     "packages": [
         {
-            "name": "francerz/php-http",
-            "version": "dev-master",
+            "name": "francerz/php-http-tools",
+            "version": "v0.2.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/francerz/php-http.git",
-                "reference": "f5ff9b59c8005286031c24d7840782a897c1a0e5"
+                "url": "https://github.com/francerz/php-http-tools.git",
+                "reference": "ef54898683bc5ac42d3536d5e85323c0b0348d56"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/francerz/php-http/zipball/f5ff9b59c8005286031c24d7840782a897c1a0e5",
-                "reference": "f5ff9b59c8005286031c24d7840782a897c1a0e5",
+                "url": "https://api.github.com/repos/francerz/php-http-tools/zipball/ef54898683bc5ac42d3536d5e85323c0b0348d56",
+                "reference": "ef54898683bc5ac42d3536d5e85323c0b0348d56",
                 "shasum": ""
             },
             "require": {
-                "francerz/php-power-data": "dev-master",
+                "psr/http-factory": "^1.0",
                 "psr/http-message": "^1.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "^9.2"
+                "phpunit/phpunit": "^9.4"
             },
             "type": "library",
             "autoload": {
                 "psr-4": {
-                    "Francerz\\Http\\": "src"
+                    "Francerz\\Http\\Tools\\": "src/tools",
+                    "Francerz\\Http\\Headers\\": "src/headers",
+                    "Francerz\\Http\\Constants\\": "src/constants"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
-            "description": "Basic HTTP client",
-            "time": "2020-10-11T23:23:50+00:00"
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Francerz",
+                    "email": "francerzam@hotmail.com"
+                }
+            ],
+            "description": "PHP HTTP Tool kit compatible with PSR-7, PSR-17 and PSR-18",
+            "time": "2020-10-18T00:35:29+00:00"
         },
         {
             "name": "francerz/php-power-data",
@@ -68,6 +79,107 @@
             ],
             "description": "PHP data structures for complex data handling",
             "time": "2020-10-05T22:54:16+00:00"
+        },
+        {
+            "name": "psr/http-client",
+            "version": "1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/http-client.git",
+                "reference": "2dfb5f6c5eff0e91e20e913f8c5452ed95b86621"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/http-client/zipball/2dfb5f6c5eff0e91e20e913f8c5452ed95b86621",
+                "reference": "2dfb5f6c5eff0e91e20e913f8c5452ed95b86621",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.0 || ^8.0",
+                "psr/http-message": "^1.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Http\\Client\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "http://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for HTTP clients",
+            "homepage": "https://github.com/php-fig/http-client",
+            "keywords": [
+                "http",
+                "http-client",
+                "psr",
+                "psr-18"
+            ],
+            "time": "2020-06-29T06:28:15+00:00"
+        },
+        {
+            "name": "psr/http-factory",
+            "version": "1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/http-factory.git",
+                "reference": "12ac7fcd07e5b077433f5f2bee95b3a771bf61be"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/http-factory/zipball/12ac7fcd07e5b077433f5f2bee95b3a771bf61be",
+                "reference": "12ac7fcd07e5b077433f5f2bee95b3a771bf61be",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.0.0",
+                "psr/http-message": "^1.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Http\\Message\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "http://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interfaces for PSR-7 HTTP message factories",
+            "keywords": [
+                "factory",
+                "http",
+                "message",
+                "psr",
+                "psr-17",
+                "psr-7",
+                "request",
+                "response"
+            ],
+            "time": "2019-04-30T12:38:16+00:00"
         },
         {
             "name": "psr/http-message",
@@ -2081,7 +2193,6 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "francerz/php-http": 20,
         "francerz/php-power-data": 20
     },
     "prefer-stable": false,

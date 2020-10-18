@@ -1,25 +1,25 @@
 <?php
 
-namespace Francerz\OAuth2\Roles;
+namespace Francerz\OAuth2\Client;
 
-use Francerz\Http\Base\MessageBase;
-use Francerz\Http\Client as HttpClient;
-use Francerz\Http\Helpers\MessageHelper;
-use Francerz\Http\Helpers\UriHelper;
-use Francerz\Http\MediaTypes;
-use Francerz\Http\Request;
-use Francerz\Http\UrlEncodedParams;
+use Francerz\Http\Constants\MediaTypes;
+use Francerz\Http\Constants\Methods;
+use Francerz\Http\Headers\BasicAuthorizationHeader;
+use Francerz\Http\Tools\HttpFactoryManager;
+use Francerz\Http\Tools\MessageHelper;
+use Francerz\Http\Tools\UriHelper;
 use Francerz\OAuth2\AccessToken;
-use Francerz\OAuth2\Flow\AuthorizationCodeRequest;
-use Francerz\OAuth2\Flow\RedeemCodeRequestBuilder;
 use Francerz\PowerData\Functions;
 use InvalidArgumentException;
+use Psr\Http\Client\ClientInterface as HttpClient;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
 
 class AuthClient
 {
+    private $httpFactory;
+
     private $clientId; // string
     private $clientSecret; // string
     private $authorizationEndpoint; // UriInterface
@@ -28,17 +28,19 @@ class AuthClient
 
     private $checkStateHandler; // callback
 
-    private $access_token;
+    private $accessToken;
 
     private $preferBodyAuthenticationFlag = false;
 
     public function __construct(
+        HttpFactoryManager $httpFactory,
         ?string $clientId = null,
         ?string $clientSecret = null,
         UriInterface $tokenEndpoint = null,
         UriInterface $authorizationEndpoint = null,
         UriInterface $callbackEndpoint = null
     ) {
+        $this->httpFactory = $httpFactory;
         $this->clientId = $clientId;
         $this->clientSecret = $clientSecret;
         $this->tokenEndpoint = $tokenEndpoint;
@@ -46,6 +48,7 @@ class AuthClient
         $this->callbackEndpoint = $callbackEndpoint;
     }
 
+    #region Accessors
     public function withClientId(string $clientId) : AuthClient
     {
         $new = clone $this;
@@ -106,25 +109,16 @@ class AuthClient
         return $this->callbackEndpoint;
     }
 
-    public function withAccessToken(AccessToken $access_token) : AuthClient
+    public function withAccessToken(AccessToken $accessToken) : AuthClient
     {
         $new = clone $this;
-        $new->access_token = $access_token;
+        $new->accessToken = $accessToken;
         return $new;
     }
 
     public function getAccessToken() : ?AccessToken
     {
-        return $this->access_token;
-    }
-
-    public function setCheckStateHandler(callable $handler)
-    {
-        if (!Functions::testSignature($handler, ['string'], 'bool')) {
-            throw new InvalidArgumentException('Funtion expected signature is: (string $state) : bool');
-        }
-
-        $this->checkStateHandler = $handler;
+        return $this->accessToken;
     }
 
     public function preferBodyAuthentication(bool $prefer)
@@ -135,6 +129,21 @@ class AuthClient
     public function isBodyAuthenticationPreferred() : bool
     {
         return $this->preferBodyAuthenticationFlag;
+    }
+
+    public function getHttpFactory() : HttpFactoryManager
+    {
+        return $this->httpFactory;
+    }
+    #endregion
+
+    public function setCheckStateHandler(callable $handler)
+    {
+        if (!Functions::testSignature($handler, ['string'], 'bool')) {
+            throw new InvalidArgumentException('Funtion expected signature is: (string $state) : bool');
+        }
+
+        $this->checkStateHandler = $handler;
     }
 
     public function getAuthorizationCodeRequestUri(array $scopes, string $state) : UriInterface
@@ -180,39 +189,43 @@ class AuthClient
         return AccessToken::fromHttpMessage($response);
     }
 
-    public function handleAuthCodeRequest(RequestInterface $request) : ?AccessToken
+    public function handleAuthCodeRequest(RequestInterface $request, HttpClient $httpClient) : ?AccessToken
     {
         $redeemReqReq = $this->getRedeemAuthCodeRequest($request);
 
-        $client = new HttpClient();
-        $response = $client->send($redeemReqReq);
+        $response = $httpClient->sendRequest($redeemReqReq);
 
-        return $this->access_token = $this->getAccessTokenFromResponse($response);
+        return $this->accessToken = $this->getAccessTokenFromResponse($response);
     }
 
     public function getFetchAccessTokenWithRefreshTokenRequest(string $refreshToken) : RequestInterface
     {
-        $bodyParams = new UrlEncodedParams(array(
+        $bodyParams = array(
             'grant_type' => 'refresh_token',
             'refresh_token' => $refreshToken
-        ));
+        );
 
-        $request = new Request($this->tokenEndpoint);
-
+        $requestFactory = $this->httpFactory->getRequestFactory();
+        $request = $requestFactory->createRequest(Methods::GET, $this->tokenEndpoint);
+        
         if ($this->preferBodyAuthenticationFlag) {
             $bodyParams['client_id'] = $this->getClientId();
             $bodyParams['client_secret'] = $this->getClientSecret();
         } else {
-            $request = $request->withAuthorizationHeader(
-                'Basic',
-                $this->getClientId() . ':' .
-                $this->getClientSecret()
+            $request = $request->withHeader(
+                'Authorization',
+                (string)new BasicAuthorizationHeader(
+                    $this->getClientId(),
+                    $this->getClientSecret()
+                )
             );
         }
 
-        $request = $request
-            ->withHeader('Content-Type', MediaTypes::APPLICATION_X_WWW_FORM_URLENCODED)
-            ->withBody($bodyParams->getStringStream());
+        $request = MessageHelper::withContent(
+            $request,
+            MediaTypes::APPLICATION_X_WWW_FORM_URLENCODED,
+            $bodyParams
+        );
 
         return $request;
     }
