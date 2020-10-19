@@ -1,6 +1,6 @@
 <?php
 
-namespace Francerz\OAuth2\Server;
+namespace Francerz\OAuth2\AuthServer;
 
 use Psr\Http\Message\UriInterface;
 

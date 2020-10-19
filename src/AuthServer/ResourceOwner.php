@@ -1,6 +1,6 @@
 <?php
 
-namespace Francerz\OAuth2;
+namespace Francerz\OAuth2\AuthServer;
 
 use Francerz\OAuth2\ResourceOwnerInterface;
 
