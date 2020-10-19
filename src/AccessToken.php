@@ -11,7 +11,9 @@ class AccessToken implements \JsonSerializable
     public $accessToken;
     public $tokenType;
     public $expiresIn;
-    public  $refreshToken;
+    public $refreshToken;
+
+    private $scope = '';
 
     private $parameters = array();
 
@@ -35,13 +37,15 @@ class AccessToken implements \JsonSerializable
         string $tokenType = 'Bearer',
         int $expiresIn = 3600,
         ?string $refreshToken = null,
-        ?int $createTime = null
+        ?int $createTime = null,
+        string $scope = ''
     ) {
         $this->accessToken = $accessToken;
         $this->tokenType = $tokenType;
         $this->expiresIn = $expiresIn;
         $this->refreshToken = $refreshToken;
         $this->createTime = is_null($createTime) ? time() : $createTime;
+        $this->scope = $scope;
     }
     
     public function jsonSerialize()
@@ -105,6 +109,14 @@ class AccessToken implements \JsonSerializable
     public function setRefreshToken(string $refreshToken)
     {
         $this->refreshToken = $refreshToken;
+    }
+    public function getScope() : string
+    {
+        return $this->scope;
+    }
+    public function setScope(string $scope)
+    {
+        $this->scope = $scope;
     }
     public function getParameter(string $name)
     {
