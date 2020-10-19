@@ -2,7 +2,7 @@
 
 namespace Francerz\OAuth2;
 
-class GrantTypes
+class TokenRequestGrantTypes
 {
     const AUTHORIZATION_CODE = 'authorization_code';
     const REFRESH_TOKEN = 'refresh_token';
