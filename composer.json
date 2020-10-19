@@ -7,11 +7,12 @@
         }
     },
     "require": {
+        "francerz/php-http-tools": "^0.2.0",
         "francerz/php-power-data": "dev-master",
-        "psr/http-message": "^1.0",
-        "psr/http-factory": "^1.0",
         "psr/http-client": "^1.0",
-        "francerz/php-http-tools": "^0.2.0"
+        "psr/http-factory": "^1.0",
+        "psr/http-message": "^1.0",
+        "psr/http-server-handler": "^1.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.2"

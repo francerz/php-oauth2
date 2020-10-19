@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "28f6ef495058c8929a468350b52c3c08",
+    "content-hash": "b1d7741058c5d757f0898b6484898043",
     "packages": [
         {
             "name": "francerz/php-http-tools",
-            "version": "v0.2.0",
+            "version": "v0.2.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/francerz/php-http-tools.git",
-                "reference": "ef54898683bc5ac42d3536d5e85323c0b0348d56"
+                "reference": "cbb12752b8648bc77f9dbcf997b3e8a52ac4677e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/francerz/php-http-tools/zipball/ef54898683bc5ac42d3536d5e85323c0b0348d56",
-                "reference": "ef54898683bc5ac42d3536d5e85323c0b0348d56",
+                "url": "https://api.github.com/repos/francerz/php-http-tools/zipball/cbb12752b8648bc77f9dbcf997b3e8a52ac4677e",
+                "reference": "cbb12752b8648bc77f9dbcf997b3e8a52ac4677e",
                 "shasum": ""
             },
             "require": {
@@ -46,7 +46,7 @@
                 }
             ],
             "description": "PHP HTTP Tool kit compatible with PSR-7, PSR-17 and PSR-18",
-            "time": "2020-10-18T00:35:29+00:00"
+            "time": "2020-10-19T20:52:30+00:00"
         },
         {
             "name": "francerz/php-power-data",
@@ -230,6 +230,59 @@
                 "response"
             ],
             "time": "2016-08-06T14:39:51+00:00"
+        },
+        {
+            "name": "psr/http-server-handler",
+            "version": "1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/http-server-handler.git",
+                "reference": "aff2f80e33b7f026ec96bb42f63242dc50ffcae7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/http-server-handler/zipball/aff2f80e33b7f026ec96bb42f63242dc50ffcae7",
+                "reference": "aff2f80e33b7f026ec96bb42f63242dc50ffcae7",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.0",
+                "psr/http-message": "^1.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Http\\Server\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "http://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for HTTP server-side request handler",
+            "keywords": [
+                "handler",
+                "http",
+                "http-interop",
+                "psr",
+                "psr-15",
+                "psr-7",
+                "request",
+                "response",
+                "server"
+            ],
+            "time": "2018-10-30T16:46:14+00:00"
         }
     ],
     "packages-dev": [
