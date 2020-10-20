@@ -9,6 +9,7 @@ use Francerz\Http\Tools\HttpFactoryManager;
 use Francerz\Http\Tools\MessageHelper;
 use Francerz\Http\Tools\UriHelper;
 use Francerz\OAuth2\AccessToken;
+use Francerz\OAuth2\TokenRequestGrantTypes;
 use Francerz\PowerData\Functions;
 use InvalidArgumentException;
 use Psr\Http\Client\ClientInterface as HttpClient;
@@ -34,18 +35,39 @@ class AuthClient
 
     public function __construct(
         HttpFactoryManager $httpFactory,
-        ?string $clientId = null,
-        ?string $clientSecret = null,
-        UriInterface $tokenEndpoint = null,
-        UriInterface $authorizationEndpoint = null,
-        UriInterface $callbackEndpoint = null
+        string $clientId = '',
+        string $clientSecret = '',
+        $tokenEndpoint = null,
+        $authorizationEndpoint = null,
+        $callbackEndpoint = null
     ) {
         $this->httpFactory = $httpFactory;
         $this->clientId = $clientId;
         $this->clientSecret = $clientSecret;
-        $this->tokenEndpoint = $tokenEndpoint;
-        $this->authorizationEndpoint = $authorizationEndpoint;
-        $this->callbackEndpoint = $callbackEndpoint;
+
+        if (is_string($tokenEndpoint)) {
+            $tokenEndpoint = $httpFactory->getUriFactory()
+                ->createUri($tokenEndpoint);
+        }
+        if ($tokenEndpoint instanceof UriInterface) {
+            $this->tokenEndpoint = $tokenEndpoint;
+        }
+
+        if (is_string($authorizationEndpoint)) {
+            $authorizationEndpoint = $httpFactory->getUriFactory()
+                ->createUri($authorizationEndpoint);
+        }
+        if ($authorizationEndpoint instanceof UriInterface) {
+            $this->authorizationEndpoint = $authorizationEndpoint;
+        }
+
+        if (is_string($callbackEndpoint)) {
+            $callbackEndpoint = $httpFactory->getUriFactory()
+                ->createUri($callbackEndpoint);
+        }
+        if ($callbackEndpoint instanceof UriInterface) {
+            $this->callbackEndpoint = $callbackEndpoint;
+        }
     }
 
     #region Accessors
@@ -201,7 +223,7 @@ class AuthClient
     public function getFetchAccessTokenWithRefreshTokenRequest(string $refreshToken) : RequestInterface
     {
         $bodyParams = array(
-            'grant_type' => 'refresh_token',
+            'grant_type' => TokenRequestGrantTypes::REFRESH_TOKEN,
             'refresh_token' => $refreshToken
         );
 

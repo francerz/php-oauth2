@@ -1,24 +1,28 @@
 <?php
 
-namespace Francerz\OAuth2\AuthServer\Handlers;
+namespace Francerz\OAuth2\AuthServer;
 
 use Francerz\Http\Constants\MediaTypes;
 use Francerz\Http\Constants\StatusCodes;
 use Francerz\Http\Headers\BasicAuthorizationHeader;
+use Francerz\Http\Tools\HttpFactoryManager;
 use Francerz\Http\Tools\MessageHelper;
 use Francerz\OAuth2\AccessToken;
-use Francerz\OAuth2\AuthServer\AuthServer;
+use Francerz\OAuth2\AuthServer\AuthCodeInterface;
 use Francerz\OAuth2\AuthServer\ClientInterface;
+use Francerz\OAuth2\AuthServer\RefreshTokenInterface;
+use Francerz\OAuth2\AuthServer\ResourceOwnerInterface;
 use Francerz\OAuth2\TokenRequestGrantTypes;
+use Francerz\PowerData\Functions;
+use InvalidArgumentException;
 use LogicException;
-use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Server\RequestHandlerInterface;
 use RuntimeException;
 
-class TokenRequestHandler implements RequestHandlerInterface
+class TokenServer
 {
-    private $authServer;
+    private $httpFactory;
 
     private $createAccessTokenHandler;
     private $findAuthorizationCodeHandler;
@@ -27,11 +31,85 @@ class TokenRequestHandler implements RequestHandlerInterface
     private $findResourceOwnerHandler;
     private $updateAuthorizationCodeRedeemTimeHandler;
 
-    public function __construct(AuthServer $authServer)
+    public function __construct(HttpFactoryManager $httpFactory)
     {
-        $this->authServer = $authServer;
+        $this->httpFactory = $httpFactory;
     }
-    public function handle(ServerRequestInterface $request): ResponseInterface
+
+    public function getHttpFactory() : HttpFactoryManager
+    {
+        return $this->httpFactory;
+    }
+
+    #region Callable Handlers
+    public function setCreateAccessTokenHandler(callable $handler)
+    {
+        if (!Functions::testSignature(
+            $handler,
+            [ClientInterface::class, ResourceOwnerInterface::class, 'string'],
+            AccessToken::class)
+        ) {
+            throw new InvalidArgumentException(
+                'Handler createAccesToken signature MUST be: '.
+                '(ClientInterface $client, ResourceOwnerInterface $owner, string $scope)'
+            );
+        }
+        $this->createAccessTokenHandler = $handler;
+    }
+    public function setFindAuthorizationCodeHandler(callable $handler)
+    {
+        if (!Functions::testSignature($handler, ['string'], AuthCodeInterface::class)) {
+            throw new InvalidArgumentException(
+                'Handler findAuthorizationCodeHandler signature MUST be: '.
+                '(string $code) : AuthCodeInterface'
+            );
+        }
+        $this->findAuthorizationCodeHandler = $handler;
+    }
+    public function setFindClientHandler(callable $handler)
+    {
+        if (!Functions::testSignature($handler, ['string'], ClientInterface::class)) {
+            throw new InvalidArgumentException(
+                'Handler findClient signature MUST be: '.
+                '(string $client_id) : ClientInterface'
+            );
+        }
+        $this->findClientHandler = $handler;
+    }
+    public function setFindRefreshTokenHandler(callable $handler)
+    {
+        if (!Functions::testSignature($handler, ['string'], RefreshTokenInterface::class)) {
+            throw new InvalidArgumentException(
+                'Handler findRefreshToken signature MUST be: '.
+                '(string $refreshToken) : RefreshTokenInterface'
+            );
+        }
+        $this->findRefreshTokenHandler = $handler;
+    }
+    public function setFindResourceOwnerHandler(callable $handler)
+    {
+        if (!Functions::testSignature($handler, ['string'], ResourceOwnerInterface::class)) {
+            throw new InvalidArgumentException(
+                'Handler findResourceOwner signature MUST be: '.
+                '(string $ownerId) : ResourceOwnerInterface'
+            );
+        }
+        $this->findResourceOwnerHandler = $handler;
+    }
+    public function setUpdateAuthorizationCodeRedeemTimeHandler(callable $handler)
+    {
+        if (!Functions::testSignature($handler, [AuthCodeInterface::class])) {
+            throw new InvalidArgumentException(
+                'Handler updateAuthorizationCodeRedeemTime signature MUST be: '.
+                '(AuthCodeInterface $authCode) : void'
+            );
+        }
+        $this->updateAuthorizationCodeRedeemTimeHandler = $handler;
+    }
+    #endregion
+
+
+    public function handle(RequestInterface $request): ResponseInterface
     {
         $params = MessageHelper::getContent($request);
 
@@ -52,7 +130,7 @@ class TokenRequestHandler implements RequestHandlerInterface
         }
     }
 
-    public function handleCodeRequest(ServerRequestInterface $request) : ResponseInterface
+    public function handleCodeRequest(RequestInterface $request) : ResponseInterface
     {
         #region Callable checks
         $findResourceOwnerHandler = $this->findResourceOwnerHandler;
@@ -77,7 +155,7 @@ class TokenRequestHandler implements RequestHandlerInterface
 
         $client = $this->checkClientCredentials($request);
 
-        $params = $request->getParsedBody();
+        $params = MessageHelper::getContent($request);
 
         if (!array_key_exists('code', $params)) {
             throw new RuntimeException('Missing code parameter.');
@@ -111,7 +189,7 @@ class TokenRequestHandler implements RequestHandlerInterface
         return $response;
     }
 
-    public function handleRefreshTokenRequest(ServerRequestInterface $request) : ResponseInterface
+    public function handleRefreshTokenRequest(RequestInterface $request) : ResponseInterface
     {
         #region Callable checks
         $findResourceOwnerHandler = $this->findResourceOwnerHandler;
@@ -131,7 +209,7 @@ class TokenRequestHandler implements RequestHandlerInterface
         #endregion
 
         $client = $this->checkClientCredentials($request);
-        $params = $request->getParsedBody();
+        $params = MessageHelper::getContent($request);
 
         if (!array_key_exists('refresh_token', $params)) {
             throw new RuntimeException('Missing refresh_token.');
@@ -157,11 +235,11 @@ class TokenRequestHandler implements RequestHandlerInterface
     }
 
     private function getClientCredentials(
-        ServerRequestInterface $request,
+        RequestInterface $request,
         ?string &$client_id = '',
         ?string &$client_secret = ''
     ) {
-        $auth = MessageHelper::getAuthorizationHeader($request);
+        $auth = MessageHelper::getFirstAuthorizationHeader($request);
 
         if (isset($auth) && $auth instanceof BasicAuthorizationHeader) {
             $client_id = $auth->getUser();
@@ -169,7 +247,7 @@ class TokenRequestHandler implements RequestHandlerInterface
             return;
         }
 
-        $params = $request->getParsedBody();
+        $params = MessageHelper::getContent($request);
         if (array_key_exists('client_id', $params)) {
             $client_id = $params['client_id'];
         }
@@ -178,10 +256,10 @@ class TokenRequestHandler implements RequestHandlerInterface
         }
     }
 
-    private function checkClientCredentials(ServerRequestInterface $request) : ClientInterface
+    private function checkClientCredentials(RequestInterface $request) : ClientInterface
     {
         $findClientHandler = $this->findClientHandler;
-        if (is_callable($findClientHandler)) {
+        if (!is_callable($findClientHandler)) {
             throw new LogicException('findClientHandler not found.');
         }
 
@@ -210,7 +288,7 @@ class TokenRequestHandler implements RequestHandlerInterface
 
     private function buildAccessTokenResponse(AccessToken $accessToken) : ResponseInterface
     {
-        $responseFactory = $this->authServer->getHttpFactory()->getResponseFactory();
+        $responseFactory = $this->httpFactory->getResponseFactory();
         $response = $responseFactory->createResponse(StatusCodes::SUCCESS_OK)
             ->withHeader('Cache-Control', 'no-store')
             ->withHeader('Pragma', 'no-cache');

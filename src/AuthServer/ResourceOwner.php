@@ -2,8 +2,6 @@
 
 namespace Francerz\OAuth2\AuthServer;
 
-use Francerz\OAuth2\ResourceOwnerInterface;
-
 class ResourceOwner implements ResourceOwnerInterface
 {
     private $uniqueId;

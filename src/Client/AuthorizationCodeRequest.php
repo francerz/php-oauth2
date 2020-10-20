@@ -3,6 +3,7 @@
 namespace Francerz\OAuth2\Client;
 
 use Francerz\Http\Tools\UriHelper;
+use Francerz\OAuth2\AuthorizeRequestTypes;
 use Francerz\OAuth2\Client\AuthClient;
 use Psr\Http\Message\UriInterface;
 
@@ -65,7 +66,7 @@ class AuthorizationCodeRequest
             throw new \Exception("AuthClient not sets");
         }
         $params = [
-            'response_type' => 'code',
+            'response_type' => AuthorizeRequestTypes::AUTHORIZATION_CODE,
             'client_id' => $this->authClient->getClientId()
         ];
 

@@ -7,7 +7,7 @@ use Francerz\Http\Constants\Methods;
 use Francerz\Http\Headers\BasicAuthorizationHeader;
 use Francerz\Http\Tools\MessageHelper;
 use Francerz\OAuth2\Client\AuthClient;
-use Francerz\OAuth2\GrantTypes;
+use Francerz\OAuth2\TokenRequestGrantTypes;
 use Psr\Http\Message\RequestInterface;
 
 class RedeemCodeRequestBuilder
@@ -58,7 +58,7 @@ class RedeemCodeRequestBuilder
         
         $request = $this->authClient->getHttpFactory()->getRequestFactory()->createRequest(Methods::POST, $uri);
         $requestBody = array(
-            'grant_type'=> GrantTypes::AUTHORIZATION_CODE,
+            'grant_type'=> TokenRequestGrantTypes::AUTHORIZATION_CODE,
             'code'      => $this->code,
         );
 
@@ -80,6 +80,7 @@ class RedeemCodeRequestBuilder
             $requestBody['redirect_uri'] = (string)$callbackEndpoint;
         }
 
+        MessageHelper::setHttpFactoryManager($this->authClient->getHttpFactory());
         $request = MessageHelper::withContent($request, MediaTypes::APPLICATION_X_WWW_FORM_URLENCODED, $requestBody);
 
         return $request;

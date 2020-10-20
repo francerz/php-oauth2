@@ -1,25 +1,27 @@
 <?php
 
-use Francerz\Http\Helpers\MessageHelper;
-use Francerz\Http\Uri;
+use Francerz\Http\Headers\BasicAuthorizationHeader;
+use Francerz\Http\HttpFactory;
+use Francerz\Http\Tools\HttpFactoryManager;
+use Francerz\Http\Tools\MessageHelper;
 use Francerz\OAuth2\AccessToken;
-use Francerz\OAuth2\Client;
-use Francerz\OAuth2\ClientInterface;
-use Francerz\OAuth2\RefreshToken;
-use Francerz\OAuth2\RefreshTokenInterface;
-use Francerz\OAuth2\ResourceOwner;
-use Francerz\OAuth2\ResourceOwnerInterface;
-use Francerz\OAuth2\Roles\AuthClient;
-use Francerz\OAuth2\Roles\AuthServer;
+use Francerz\OAuth2\AuthServer\Client;
+use Francerz\OAuth2\AuthServer\ClientInterface;
+use Francerz\OAuth2\AuthServer\RefreshToken;
+use Francerz\OAuth2\AuthServer\RefreshTokenInterface;
+use Francerz\OAuth2\AuthServer\ResourceOwner;
+use Francerz\OAuth2\AuthServer\ResourceOwnerInterface;
+use Francerz\OAuth2\AuthServer\TokenServer;
+use Francerz\OAuth2\Client\AuthClient;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 class FlowRefreshingAccessTokenTest extends TestCase
 {
-    public function testCreateServer()
+    public function testCreateTokenServer()
     {
-        $server = new AuthServer();
+        $server = new TokenServer(new HttpFactoryManager(new HttpFactory()));
         $server->setFindClientHandler(function(string $client_id): ClientInterface {
             return new Client($client_id, 'abcdefghij0123456789', true);
         });
@@ -33,19 +35,21 @@ class FlowRefreshingAccessTokenTest extends TestCase
             return new AccessToken('0123456789abcdef', 'Bearer', 3600, 'fedcba9876543210');
         });
 
-        $this->assertInstanceOf(AuthServer::class, $server);
+        $this->assertInstanceOf(TokenServer::class, $server);
 
         return $server;
     }
 
     public function testCreateClient()
     {
+        $httpFactory = new HttpFactory();
         $client = new AuthClient(
+            new HttpFactoryManager($httpFactory),
             'abcd1234',
             'abcdefghij0123456789',
-            new Uri('https://oauth2.server.com/token'),
-            new Uri('https://oauth2.server.com/authorize'),
-            new Uri('https://www.client.com/oauth2/callback')
+            $httpFactory->createUri('https://oauth2.server.com/token'),
+            $httpFactory->createUri('https://oauth2.server.com/authorize'),
+            $httpFactory->createUri('https://www.client.com/oauth2/callback')
         );
         $client = $client->withAccessToken(new AccessToken(
             'zyxwvutsrqponmlkjihgfedcba',
@@ -74,26 +78,22 @@ class FlowRefreshingAccessTokenTest extends TestCase
         $this->assertEquals('refresh_token', $params['grant_type']);
         $this->assertEquals('AbCdEfGhIj', $params['refresh_token']);
 
-        $auth = MessageHelper::getAuthorizationHeader($request, $authType, $authContent);
-        if ($authType === 'Basic') {
-            $this->assertEquals('abcd1234', $auth['user']);
-            $this->assertEquals('abcdefghij0123456789', $auth['password']);
+        $auth = MessageHelper::getFirstAuthorizationHeader($request);
+        if ($auth instanceof BasicAuthorizationHeader) {
+            $this->assertEquals('abcd1234', $auth->getUser());
+            $this->assertEquals('abcdefghij0123456789', $auth->getPassword());
         }
 
         return $request;
     }
 
     /**
-     * @depends testCreateServer
+     * @depends testCreateTokenServer
      * @depends testClientGetFetchAccessTokenWithRefreshTokenRequest
-     *
-     * @param AuthServer $server
-     * @param RequestInterface $request
-     * @return void
      */
-    public function testServerHandleTokenRequest(AuthServer $server, RequestInterface $request)
+    public function testServerHandleTokenRequest(TokenServer $server, RequestInterface $request)
     {
-        $response = $server->handleTokenRequest($request);
+        $response = $server->handle($request);
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('no-store', $response->getHeaderLine('Cache-Control'));

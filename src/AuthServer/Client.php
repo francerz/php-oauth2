@@ -2,8 +2,6 @@
 
 namespace Francerz\OAuth2\AuthServer;
 
-use Francerz\OAuth2\ClientInterface;
-
 class Client implements ClientInterface
 {
     private $client_id;

@@ -1,29 +1,29 @@
 <?php
 
-use Francerz\Http\Helpers\UriHelper;
-use Francerz\Http\Methods;
-use Francerz\Http\Request;
-use Francerz\Http\Response;
-use Francerz\Http\StatusCodes;
-use Francerz\Http\Uri;
-use Francerz\OAuth2\Roles\AuthServer;
+use Francerz\Http\Constants\Methods;
+use Francerz\Http\Constants\StatusCodes;
+use Francerz\Http\HttpFactory;
+use Francerz\Http\Tools\HttpFactoryManager;
+use Francerz\Http\Tools\UriHelper;
+use Francerz\OAuth2\AuthServer\AuthorizeServer;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 
 class FlowImplicitGrantTest extends TestCase
 {
-    public function testCreateServer()
+    public function testCreateAuthorizeServer()
     {
-        $server = new AuthServer();
+        $server = new AuthorizeServer(new HttpFactoryManager(new HttpFactory()));
 
-        $this->assertInstanceOf(AuthServer::class, $server);
+        $this->assertInstanceOf(AuthorizeServer::class, $server);
 
         return $server;
     }
 
     public function testAuthorizationRequest()
     {
-        $uri = new Uri('https://oauth2.server.com/authorize');
+        $httpFactory = new HttpFactory();
+        $uri = $httpFactory->createUri('https://oauth2.server.com/authorize');
         $uri = UriHelper::withQueryParams($uri, array(
             'response_type' => 'token',
             'client_id' => 'abc123',
@@ -32,7 +32,7 @@ class FlowImplicitGrantTest extends TestCase
             'state' => 'qwerty'
         ));
 
-        $request = new Request($uri, Methods::GET);
+        $request = $httpFactory->createRequest(Methods::GET, $uri);
 
         $this->assertInstanceOf(RequestInterface::class, $request);
 
@@ -40,22 +40,21 @@ class FlowImplicitGrantTest extends TestCase
     }
 
     /**
-     * @depends testCreateServer
+     * @depends testCreateAuthorizeServer
      * @depends testAuthorizationRequest
-     *
-     * @param AuthServer $server
-     * @param RequestInterface $request
-     * @return void
      */
-    public function testAccessTokenResponse(AuthServer $server, RequestInterface $request)
+    public function testAccessTokenResponse(AuthorizeServer $server, RequestInterface $request)
     {
         // NOT IMPLEMENTED YET
         /*
         $response = $server->handleAuthRequest($request);
         /*/
+        $uriFactory = $server->getHttpFactory()->getUriFactory();
+        $responseFactory = $server->getHttpFactory()->getResponseFactory();
+
         $reqParams = UriHelper::getQueryParams($request->getUri());
 
-        $locUri = new Uri($reqParams['redirect_uri']);
+        $locUri = $uriFactory->createUri($reqParams['redirect_uri']);
         $locUri = UriHelper::withFragmentParams($locUri, array(
             'access_token' => 'zyxwvutsrqponmlkjihgfedcba',
             'token_type' => 'Bearer',
@@ -64,14 +63,12 @@ class FlowImplicitGrantTest extends TestCase
             'state' => $reqParams['state']
         ));
 
-        $response = new Response();
-        $response = $response
-            ->withStatus(StatusCodes::FOUND)
-            ->withHeader('Location', $locUri);
+        $response = $responseFactory->createResponse(StatusCodes::REDIRECT_FOUND);
+        $response = $response->withHeader('Location', $locUri);
         // */
-        $locUri = new Uri($response->getHeaderLine('Location'));
+        $locUri = $uriFactory->createUri($response->getHeaderLine('Location'));
 
-        $this->assertEquals(StatusCodes::FOUND, $response->getStatusCode());
+        $this->assertEquals(StatusCodes::REDIRECT_FOUND, $response->getStatusCode());
         $this->assertEquals('https', $locUri->getScheme());
         $this->assertEquals('www.client.com', $locUri->getHost());
         $this->assertEquals('/oauth2/callback', $locUri->getPath());

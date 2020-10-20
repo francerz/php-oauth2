@@ -1,27 +1,36 @@
 <?php
 
-use Francerz\Http\Uri;
-use Francerz\OAuth2\Roles\AuthClient;
-use Francerz\OAuth2\Flow\AuthorizationCodeRequest;
+use Francerz\Http\HttpFactory;
+use Francerz\Http\Tools\HttpFactoryManager;
+use Francerz\Http\Tools\UriHelper;
+use Francerz\OAuth2\Client\AuthClient;
 use PHPUnit\Framework\TestCase;
 
 class AuthorizationCodeRequestTest extends TestCase
 {
     public function testGetRequestUri()
     {
+        $httpFactory = new HttpFactory();
         $authClient = new AuthClient(
+            new HttpFactoryManager($httpFactory),
             'abcdefg',// client_id
             'qwertyuiop', // client_secret
-            new Uri('https://example.com/oauth2/token'),
-            new Uri('https://example.com/oauth2/auth')
+            'https://server.com/oauth2/token',
+            'https://server.com/oauth2/authorize',
+            'https://client.com/oauth2/callback'
         );
 
-        $authReq = new AuthorizationCodeRequest($authClient);
-        $reqUri = $authReq->getRequestUri();
+        $authUri = $authClient->getAuthorizationCodeRequestUri(['scp1','scp2'], 'abcdef');
 
-        $this->assertEquals(
-            'https://example.com/oauth2/auth?response_type=code&client_id=abcdefg',
-            (string)$reqUri
-        );
+        $this->assertEquals('https', $authUri->getScheme());
+        $this->assertEquals('server.com', $authUri->getHost());
+        $this->assertEquals('/oauth2/authorize', $authUri->getPath());
+
+        $query = UriHelper::getQueryParams($authUri);
+        $this->assertEquals('abcdefg',$query['client_id']);
+        $this->assertEquals('scp1 scp2', $query['scope']);
+        $this->assertEquals('abcdef', $query['state']);
+        $this->assertEquals('code', $query['response_type']);
+
     }
 }

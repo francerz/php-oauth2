@@ -1,36 +1,42 @@
 <?php
 
-namespace Francerz\OAuth2\AuthServer\Handlers;
+namespace Francerz\OAuth2\AuthServer;
 
 use Francerz\Http\Constants\StatusCodes;
+use Francerz\Http\Tools\HttpFactoryManager;
 use Francerz\Http\Tools\UriHelper;
 use Francerz\OAuth2\AuthError;
 use Francerz\OAuth2\AuthErrorCodes;
 use Francerz\OAuth2\AuthorizeRequestTypes;
-use Francerz\OAuth2\AuthServer\AuthServer;
+use Francerz\OAuth2\AuthServer\ClientInterface;
+use Francerz\OAuth2\AuthServer\ResourceOwnerInterface;
 use Francerz\PowerData\Functions;
 use InvalidArgumentException;
 use LogicException;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UriInterface;
-use Psr\Http\Server\RequestHandlerInterface;
 use RuntimeException;
 
-class AuthorizeRequestHandler implements RequestHandlerInterface
+class AuthorizeServer
 {
-    private $authServer;
-
+    private $httpFactory;
 
     private $createAuthorizationCodeHandler;
     private $findClientHandler;
     private $getResourceOwnerHandler;
 
-    public function __construct(AuthServer $authServer)
+    public function __construct(HttpFactoryManager $httpFactory)
     {
-        $this->authServer = $authServer;
+        $this->httpFactory = $httpFactory;
     }
 
+    public function getHttpFactory() : HttpFactoryManager
+    {
+        return $this->httpFactory;
+    }
+
+    #region Callable handlers
     public function setFindClientHandler(callable $handler)
     {
         if (!Functions::testSignature($handler, ['string'], ClientInterface::class)) {
@@ -53,22 +59,23 @@ class AuthorizeRequestHandler implements RequestHandlerInterface
         $this->getResourceOwnerHandler = $handler;
     }
 
-    public function setCreateAuthorizationCodeHander(callable $handler)
+    public function setCreateAuthorizationCodeHandler(callable $handler)
     {
         if (!Functions::testSignature(
             $handler,
-            [ClientInterface::class, ResourceOwner::class, 'string', UriInterface::class],
+            [ClientInterface::class, ResourceOwnerInterface::class, 'string', UriInterface::class],
             'string')
         ) {
             throw new InvalidArgumentException(
                 'createAuthorizationCodeHandler signature MUST be: '.
-                '(ClientInterface $client, ResourceOwner $owner, string $scope, UriInterface $redirect_uri) : string'
+                '(ClientInterface $client, ResourceOwnerInterface $owner, string $scope, UriInterface $redirect_uri) : string'
             );
         }
         $this->createAuthorizationCodeHandler = $handler;
     }
+    #endregion
 
-    public function handle(ServerRequestInterface $request) : ResponseInterface
+    public function handle(RequestInterface $request) : ResponseInterface
     {
         $response_type = UriHelper::getQueryParam($request->getUri(), 'response_type');
 
@@ -76,20 +83,21 @@ class AuthorizeRequestHandler implements RequestHandlerInterface
             case AuthorizeRequestTypes::AUTHORIZATION_CODE:
                 return $this->handleCodeRequest($request);
             default:
+                throw new RuntimeException(AuthErrorCodes::INVALID_REQUEST);
         }
-        $httpFactory = $this->authServer->getHttpFactory();
+        $uriFactory = $this->httpFactory->getUriFactory();
         $state = UriHelper::getQueryParam($request->getUri(), 'state');
         $redirect_uri = UriHelper::getQueryParam($request->getUri(), 'redirect_uri');
-        $redirect_uri = $httpFactory->getUriFactory()->createUri($redirect_uri);
+        $redirect_uri = $uriFactory->createUri($redirect_uri);
         
-        $error = new AuthError($httpFactory, $state, AuthErrorCodes::INVALID_REQUEST);
+        $error = new AuthError($this->httpFactory, $state, AuthErrorCodes::INVALID_REQUEST);
         return $error->getErrorRedirect($redirect_uri);
     }
 
-    private function handleCodeRequest(ServerRequestInterface $request) : ResponseInterface
+    private function handleCodeRequest(RequestInterface $request) : ResponseInterface
     {
-        $responseFactory = $this->authServer->getHttpFactory()->getResponseFactory();
-        $uriFactory = $this->authServer->getHttpFactory()->getUriFactory();
+        $responseFactory = $this->httpFactory->getResponseFactory();
+        $uriFactory = $this->httpFactory->getUriFactory();
 
         $findClientHandler = $this->findClientHandler;
         if (!is_callable($findClientHandler)) {

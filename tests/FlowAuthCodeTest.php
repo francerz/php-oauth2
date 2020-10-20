@@ -1,20 +1,20 @@
 <?php
 
-use Francerz\Http\BodyParsers;
-use Francerz\Http\Helpers\MessageHelper;
-use Francerz\Http\Helpers\UriHelper;
-use Francerz\Http\Parsers\UrlEncodedParser;
-use Francerz\Http\Request;
-use Francerz\Http\Uri;
+use Francerz\Http\Constants\Methods;
+use Francerz\Http\HttpFactory;
+use Francerz\Http\Tools\HttpFactoryManager;
+use Francerz\Http\Tools\MessageHelper;
+use Francerz\Http\Tools\UriHelper;
 use Francerz\OAuth2\AccessToken;
-use Francerz\OAuth2\AuthCode;
-use Francerz\OAuth2\AuthCodeInterface;
-use Francerz\OAuth2\Client;
-use Francerz\OAuth2\ClientInterface;
-use Francerz\OAuth2\ResourceOwner;
-use Francerz\OAuth2\ResourceOwnerInterface;
-use Francerz\OAuth2\Roles\AuthClient;
-use Francerz\OAuth2\Roles\AuthServer;
+use Francerz\OAuth2\AuthServer\AuthCode;
+use Francerz\OAuth2\AuthServer\AuthCodeInterface;
+use Francerz\OAuth2\AuthServer\AuthorizeServer;
+use Francerz\OAuth2\AuthServer\Client;
+use Francerz\OAuth2\AuthServer\ClientInterface;
+use Francerz\OAuth2\AuthServer\ResourceOwner;
+use Francerz\OAuth2\AuthServer\ResourceOwnerInterface;
+use Francerz\OAuth2\AuthServer\TokenServer;
+use Francerz\OAuth2\Client\AuthClient;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -22,52 +22,75 @@ use Psr\Http\Message\UriInterface;
 
 class FlowAuthCodeTest extends TestCase
 {
-    public function testCreateServer() : AuthServer
+    public function testCreateAuthorizeServer() : AuthorizeServer
     {
-        $server = new AuthServer();
-        $server->setFindClientHandler(function(string $client_id) : ClientInterface {
+        $authHandler = new AuthorizeServer(new HttpFactoryManager(new HttpFactory()));
+
+        $authHandler->setFindClientHandler(function(string $client_id) : ?ClientInterface {
             return new Client($client_id);
         });
-        $server->setGetResourceOwnerHandler(function() : ResourceOwnerInterface {
+        $authHandler->setGetResourceOwnerHandler(function() : ?ResourceOwnerInterface {
             return new ResourceOwner(12345);
         });
-        $server->setFindResourceOwnerHandler(function(string $ownerUniqueId) : ResourceOwnerInterface {
-            return new ResourceOwner($ownerUniqueId);
-        });
-        $server->setCreateAuthorizationCodeHandler(function(ClientInterface $client, ResourceOwnerInterface $owner, string $scope, UriInterface $redirectUri) : string {
+        $authHandler->setCreateAuthorizationCodeHandler(function(ClientInterface $client, ResourceOwnerInterface $owner, string $scope, UriInterface $redirectUri) : string {
             return 'abcdefghijklmnopqrstuvwxyz';
         });
-        $server->setFindAuthorizationCodeHandler(function(string $code) : AuthCodeInterface {
+
+        $this->assertInstanceOf(AuthorizeServer::class, $authHandler);
+
+        return $authHandler;
+    }
+
+    public function testCreateTokenServer() : TokenServer
+    {
+        $tokenServer = new TokenServer(new HttpFactoryManager(new HttpFactory()));
+
+        $tokenServer->setFindClientHandler(function(string $client_id) : ClientInterface {
+            return new Client($client_id);
+        });
+        $tokenServer->setFindResourceOwnerHandler(function(string $ownerUniqueId) : ResourceOwnerInterface {
+            return new ResourceOwner($ownerUniqueId);
+        });
+        
+        $tokenServer->setFindAuthorizationCodeHandler(function(string $code) use ($tokenServer) : AuthCodeInterface {
+            $uriFactory = $tokenServer->getHttpFactory()->getUriFactory();
             return new AuthCode(
                 '1234567890abcdef',
                 12345,
                 $code,
                 'scope1 scope2',
-                new Uri('https://www.client.com/oauth2/callback')
+                $uriFactory->createUri('https://www.client.com/oauth2/callback')
             );
         });
-        $server->setUpdateAuthorizationCodeRedeemTimeHandler(function(AuthCodeInterface $authCode) {
+        $tokenServer->setUpdateAuthorizationCodeRedeemTimeHandler(function(AuthCodeInterface $authCode) {
 
         });
-        $server->setCreateAccessTokenHandler(function(
+        $tokenServer->setCreateAccessTokenHandler(function(
             ClientInterface $client,
             ResourceOwnerInterface $owner,
             string $scope
         ) : AccessToken {
-            return new AccessToken('zyxwvutsrqponmlkjihgfedcba', 'Bearer', 3600, 'AbCdEfGhIjKlMnOpQrStUvWxYz');
+            return new AccessToken(
+                'zyxwvutsrqponmlkjihgfedcba',
+                'Bearer',
+                3600,
+                'AbCdEfGhIjKlMnOpQrStUvWxYz'
+            );
         });
 
-        $this->assertInstanceOf(AuthServer::class, $server);
-        return $server;
+        $this->assertInstanceOf(TokenServer::class, $tokenServer);
+
+        return $tokenServer;
     }
     public function testCreateClient() : AuthClient
     {
         $client = new AuthClient(
+            new HttpFactoryManager(new HttpFactory()),
             '1234567890abcdef',
-            null,
-            new Uri('https://oauth2.server.com/token'),
-            new Uri('https://oauth2.server.com/request'),
-            new Uri('https://www.client.com/oauth2/callback')
+            '',
+           'https://oauth2.server.com/token',
+           'https://oauth2.server.com/request',
+           'https://www.client.com/oauth2/callback'
         );
         $client->setCheckStateHandler(function(string $state): bool {
             return $state === 'qwerty';
@@ -101,21 +124,24 @@ class FlowAuthCodeTest extends TestCase
     }
 
     /**
-     * @depends testCreateServer
+     * @depends testCreateAuthorizeServer
      * @depends testGetAuthorizationCodeRequestUri
      *
      * @return void
      */
-    public function testHandleAuthCodeRequest(AuthServer $server, UriInterface $uri)
+    public function testHandleAuthCodeRequest(AuthorizeServer $authHandler, UriInterface $uri)
     {
+        $uriFactory = $authHandler->getHttpFactory()->getUriFactory();
+        $requestFactory = $authHandler->getHttpFactory()->getRequestFactory();
+
         // Creates resquest from uri just like a browser would do.
-        $request = new Request($uri);
+        $request = $requestFactory->createRequest(Methods::GET, $uri);
 
         // Starts the real test.
-        $response = $server->handleAuthRequest($request);
+        $response = $authHandler->handle($request);
 
         $location = $response->getHeaderLine('Location');
-        $locUri = new Uri($location);
+        $locUri = $uriFactory->createUri($location);
 
         $this->assertEquals('https', $locUri->getScheme());
         $this->assertEquals('www.client.com', $locUri->getHost());
@@ -134,10 +160,13 @@ class FlowAuthCodeTest extends TestCase
      */
     public function testHandleAuthCodeResponse(AuthClient $client, ResponseInterface $response)
     {
+        $uriFactory = $client->getHttpFactory()->getUriFactory();
+        $requestFactory = $client->getHttpFactory()->getRequestFactory();
+
         // Creates request from redirection just like a browser would do.
         $location = $response->getHeaderLine('Location');
-        $locUri = new Uri($location);
-        $request = new Request($locUri);
+        $locUri = $uriFactory->createUri($location);
+        $request = $requestFactory->createRequest(Methods::GET, $locUri);
 
         // Starts the real test.
         $redeemAuthCodeRequest = $client->getRedeemAuthCodeRequest($request);
@@ -147,7 +176,6 @@ class FlowAuthCodeTest extends TestCase
         $this->assertEquals('oauth2.server.com', $tokenUri->getHost());
         $this->assertEquals('/token', $tokenUri->getPath());
 
-        BodyParsers::register(UrlEncodedParser::class);
         $body = MessageHelper::getContent($redeemAuthCodeRequest);
 
         $this->assertEquals('authorization_code', $body['grant_type']);
@@ -163,16 +191,13 @@ class FlowAuthCodeTest extends TestCase
     }
 
     /**
-     * @depends testCreateServer
+     * @depends testCreateTokenServer
      * @depends testHandleAuthCodeResponse
-     *
-     * @param AuthServer $server
-     * @param RequestInterface $request
      * @return void
      */
-    public function testHandleRedeemAuthCodeRequest(AuthServer $server, RequestInterface $request) : ResponseInterface
+    public function testHandleRedeemAuthCodeRequest(TokenServer $tokenHandler, RequestInterface $request) : ResponseInterface
     {
-        $response = $server->handleTokenRequest($request);
+        $response = $tokenHandler->handle($request);
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('no-store', $response->getHeaderLine('Cache-Control'));
